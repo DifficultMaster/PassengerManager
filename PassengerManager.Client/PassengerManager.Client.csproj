@@ -22,4 +22,14 @@
     <ProjectReference Include="..\PassengerManager.Shared\PassengerManager.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Protos\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\PassengerManager.Shared\Protos\passenger_manager.proto" GrpcServices="Client">
+      <Link>Protos\passenger_manager.proto</Link>
+    </Protobuf>
+  </ItemGroup>
+
 </Project>

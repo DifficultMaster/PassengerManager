@@ -10,6 +10,7 @@ using PassengerManager.Server.Services.Maps;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using System.Linq.Expressions;
 
 namespace PassengerManager.Server.Services.Background
 {
@@ -28,8 +29,8 @@ namespace PassengerManager.Server.Services.Background
             _http = httpClientFactory.CreateClient();
         }
 
-        private async Task ProcessCsvBulk<TEntity, TMap>(ZipArchive archive, string fileName, PassengerManagerContext context,
-            Func<TEntity, PassengerManagerContext, Task> upsertLogic)
+        private async Task ImportBulkUpsert<TEntity, TMap>(ZipArchive archive, string fileName, PassengerManagerContext context,
+            Expression<Func<TEntity, string>> keySelector)
             where TEntity : class
             where TMap : ClassMap<TEntity>
         {
@@ -41,10 +42,47 @@ namespace PassengerManager.Server.Services.Background
 
             csv.Context.RegisterClassMap<TMap>();
 
-            IEnumerable<TEntity> records = csv.GetRecords<TEntity>();
-            foreach (TEntity r in records)
+            List<TEntity> csvRecords = csv.GetRecords<TEntity>().ToList();
+            if (!csvRecords.Any()) return;
+
+            Func<TEntity, string> getCsvKey = keySelector.Compile();
+
+            List<string> existingKeys = await context.Set<TEntity>()
+                .AsNoTracking()
+                .Select(keySelector)
+                .ToListAsync();
+
+            HashSet<string> existingKeySet = new HashSet<string>(existingKeys);
+
+            List<TEntity> toInsert = new List<TEntity>();
+            List<TEntity> toUpdate = new List<TEntity>();
+
+            foreach (TEntity record in csvRecords)
             {
-                await upsertLogic(r, context);
+                if (existingKeySet.Contains(getCsvKey(record)))
+                {
+                    toUpdate.Add(record);
+                }
+                else
+                {
+                    toInsert.Add(record);
+                }
+            }
+
+            if (toInsert.Any())
+            {
+                await context.Set<TEntity>().AddRangeAsync(toInsert);
+            }
+
+            foreach (TEntity record in toUpdate)
+            {
+                string key = getCsvKey(record);
+                TEntity? entity = await context.Set<TEntity>().FindAsync(key);
+
+                if (entity != null)
+                {
+                    context.Entry(entity).CurrentValues.SetValues(record);
+                }
             }
 
             await context.SaveChangesAsync();
@@ -60,7 +98,7 @@ namespace PassengerManager.Server.Services.Background
 
             csv.Context.RegisterClassMap<ShapePointMap>();
 
-            List<ShapePoint> allPoints = csv.GetRecords<ShapePoint>().ToList(); // RAM constraints?
+            List<ShapePoint> allPoints = csv.GetRecords<ShapePoint>().ToList(); // Test RAM performance
             if (!allPoints.Any()) return;
 
             List<string> distinctShapeIds = allPoints.Select(p => p.ShapeId).Distinct().ToList();
@@ -89,37 +127,22 @@ namespace PassengerManager.Server.Services.Background
                 await context.SaveChangesAsync();
             }
 
-            HashSet<(string, int)> existingSignatures = new HashSet<(string, int)>();
-
-            const int BatchSize = 1000;
+            const int BatchSize = 2000; //
             for (int i = 0; i < distinctShapeIds.Count; i += BatchSize)
             {
                 List<string> batchIds = distinctShapeIds.Skip(i).Take(BatchSize).ToList();
-                var batchSpecificExisting = await context.ShapePoints
-                    .AsNoTracking()
+                var oldPoints = await context.ShapePoints
                     .Where(p => batchIds.Contains(p.ShapeId))
-                    .Select(p => new
-                    {
-                        p.ShapeId,
-                        p.Sequence
-                    })
                     .ToListAsync();
 
-                foreach (var signature in batchSpecificExisting)
+                if (oldPoints.Any())
                 {
-                    existingSignatures.Add((signature.ShapeId, signature.Sequence));
-                }
-            }
+                    context.ShapePoints.RemoveRange(oldPoints);
+                }    
+            }        
 
-            var newPoints = allPoints
-                .Where(p => !existingSignatures.Contains((p.ShapeId, p.Sequence)))
-                .ToList();
-
-            if (newPoints.Any())
-            {
-                await context.ShapePoints.AddRangeAsync(newPoints);
-                await context.SaveChangesAsync();
-            }
+            await context.ShapePoints.AddRangeAsync(allPoints);
+            await context.SaveChangesAsync();
         }
 
         protected override async Task ExecuteAsync(CancellationToken token)
@@ -143,8 +166,17 @@ namespace PassengerManager.Server.Services.Background
             ZipArchive? archive = null;
             Stream? stream = null;
 
+            int attempts = 0;
+            bool downloadSuccess = false;
+
+            while (!downloadSuccess && attempts < TimeoutDefaults.StaticData.MaxRetries)
+
             try
             {
+                attempts++;
+
+                using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutDefaults.StaticData.DownloadTimeoutSeconds));
+
                 string url = _configuration.GetValue<string>("GtfsSettings:StaticDataUrl") ?? string.Empty;
                 if (string.IsNullOrEmpty(url))
                 {
@@ -152,13 +184,24 @@ namespace PassengerManager.Server.Services.Background
                     return;
                 }
 
-                stream = await _http.GetStreamAsync(url);
+                stream = await _http.GetStreamAsync(url, cts.Token);
                 archive = new ZipArchive(stream);
+
+                downloadSuccess = true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to download GTFS zip. Aborting sync.");
-                return;
+                stream?.Dispose();
+                stream = null;
+
+                if (attempts >= TimeoutDefaults.StaticData.MaxRetries)
+                {
+                    _logger.LogError(ex, $"Failed to download GTFS static data after {attempts} attempts. Aborting sync.");
+                    return;
+                }
+
+                _logger.LogError(ex, $"Failed to download GTFS static data. Retrying in {TimeoutDefaults.StaticData.RetryTimeoutSeconds} seconds...");
+                await Task.Delay(TimeSpan.FromSeconds(TimeoutDefaults.StaticData.RetryTimeoutSeconds));
             }
 
             using IServiceScope scope = _serviceProvider.CreateScope();
@@ -172,17 +215,24 @@ namespace PassengerManager.Server.Services.Background
 
                 try
                 {
-                    await ProcessCsvBulk<Agency, AgencyMap>(archive, "agency.txt", context, async (record, context) =>
-                    {
-                        if (await context.Agencies.FindAsync(record.AgencyId) == null)
-                            context.Agencies.Add(record);
-                    });
-                }
-                catch ()
-                {
+                    await ImportBulkUpsert<Shared.Models.Agency, Server.Services.Maps.AgencyMap>(archive, "agency.txt", context, a => a.AgencyId);
+                    await ImportBulkUpsert<Shared.Models.Stop, Server.Services.Maps.StopMap>(archive, "stops.txt", context, s => s.StopId);
+                    await ImportBulkUpsert<Shared.Models.Route, Server.Services.Maps.RouteMap>(archive, "routes.txt", context, r => r.RouteId);
+                    await ImportBulkUpsert<Shared.Models.Trip, Server.Services.Maps.TripMap>(archive, "trips.txt", context, t => t.TripId);
+                    await ProcessShapes(archive, context);
 
+                    await transaction.CommitAsync();
+                    _logger.LogInformation("Successful GTFS static data sync complete.");
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Failed to sync GTFS static data.");
                 }
             });
+
+            archive?.Dispose();
+            stream?.Dispose();
         }            
     }
 }

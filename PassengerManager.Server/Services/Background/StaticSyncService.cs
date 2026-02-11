@@ -86,6 +86,7 @@ namespace PassengerManager.Server.Services.Background
             }
 
             await context.SaveChangesAsync();
+            context.ChangeTracker.Clear();
         }
 
         private async Task ProcessShapes(ZipArchive archive, PassengerManagerContext context)
@@ -127,35 +128,60 @@ namespace PassengerManager.Server.Services.Background
                 await context.SaveChangesAsync();
             }
 
-            const int BatchSize = 2000; //
-            for (int i = 0; i < distinctShapeIds.Count; i += BatchSize)
+            bool autoDetectChanges = context.ChangeTracker.AutoDetectChangesEnabled;
+            context.ChangeTracker.AutoDetectChangesEnabled = false;
+
+            try
             {
-                List<string> batchIds = distinctShapeIds.Skip(i).Take(BatchSize).ToList();
-                var oldPoints = await context.ShapePoints
-                    .Where(p => batchIds.Contains(p.ShapeId))
-                    .ToListAsync();
-
-                if (oldPoints.Any())
+                const int BatchSize = 2000;
+                for (int i = 0; i < distinctShapeIds.Count; i += BatchSize)
                 {
-                    context.ShapePoints.RemoveRange(oldPoints);
-                }    
-            }        
+                    List<string> batchIds = distinctShapeIds.Skip(i).Take(BatchSize).ToList();
+                    var oldPoints = await context.ShapePoints
+                        .Where(p => batchIds.Contains(p.ShapeId))
+                        .ToListAsync();
 
-            await context.ShapePoints.AddRangeAsync(allPoints);
-            await context.SaveChangesAsync();
+                    if (oldPoints.Any())
+                    {
+                        context.ShapePoints.RemoveRange(oldPoints);
+                    }
+                }
+
+                await context.ShapePoints.AddRangeAsync(allPoints);
+                await context.SaveChangesAsync();
+            }
+            finally
+            {
+                context.ChangeTracker.AutoDetectChangesEnabled = autoDetectChanges;
+                context.ChangeTracker.Clear();
+            }
         }
 
         protected override async Task ExecuteAsync(CancellationToken token)
         {
+            await Task.Yield();
+
             while (!token.IsCancellationRequested)
             {
-                if (_configuration.GetValue<bool>("GtfsSettings:AutoSyncEnabled", false))
+                try
                 {
-                    await RunSync();
-                }
+                    if (_configuration.GetValue<bool>("GtfsSettings:StaticDataAutoSyncEnabled", false))
+                    {
+                        await RunSync();
+                    }
 
-                await Task.Delay(TimeSpan
-                    .FromHours(_configuration.GetValue<int>("GtfsSettings:SyncIntervalHours", AppDefaults.Sync.StaticIntervalHours)), token);
+                    await Task.Delay(TimeSpan
+                        .FromHours(_configuration.GetValue<int>("GtfsSettings:StaticDataSyncIntervalHours", AppDefaults.Sync.StaticIntervalHours)), token);
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unhandled exception in StaticSyncService.");
+                    await Task.Delay(TimeSpan.FromSeconds(30), token);
+                }
             }
         }
 
@@ -170,38 +196,40 @@ namespace PassengerManager.Server.Services.Background
             bool downloadSuccess = false;
 
             while (!downloadSuccess && attempts < TimeoutDefaults.StaticData.MaxRetries)
-
-            try
             {
-                attempts++;
-
-                using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutDefaults.StaticData.DownloadTimeoutSeconds));
-
-                string url = _configuration.GetValue<string>("GtfsSettings:StaticDataUrl") ?? string.Empty;
-                if (string.IsNullOrEmpty(url))
+                try
                 {
-                    _logger.LogError("GtfsSettings:StaticDataUrl is missing.");
-                    return;
+                    attempts++;
+
+                    using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutDefaults.StaticData.DownloadTimeoutSeconds));
+
+                    string url = _configuration.GetValue<string>("GtfsSettings:StaticDataUrl") ?? string.Empty;
+                    if (string.IsNullOrEmpty(url))
+                    {
+                        _logger.LogError("GtfsSettings:StaticDataUrl is missing.");
+                        return;
+                    }
+
+                    stream = await _http.GetStreamAsync(url, cts.Token);
+                    archive = new ZipArchive(stream);
+
+                    _logger.LogInformation("GTFS static data downloaded successfully.");
+                    downloadSuccess = true;
                 }
-
-                stream = await _http.GetStreamAsync(url, cts.Token);
-                archive = new ZipArchive(stream);
-
-                downloadSuccess = true;
-            }
-            catch (Exception ex)
-            {
-                stream?.Dispose();
-                stream = null;
-
-                if (attempts >= TimeoutDefaults.StaticData.MaxRetries)
+                catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Failed to download GTFS static data after {attempts} attempts. Aborting sync.");
-                    return;
-                }
+                    stream?.Dispose();
+                    stream = null;
 
-                _logger.LogError(ex, $"Failed to download GTFS static data. Retrying in {TimeoutDefaults.StaticData.RetryTimeoutSeconds} seconds...");
-                await Task.Delay(TimeSpan.FromSeconds(TimeoutDefaults.StaticData.RetryTimeoutSeconds));
+                    if (attempts >= TimeoutDefaults.StaticData.MaxRetries)
+                    {
+                        _logger.LogError(ex, $"Failed to download GTFS static data after {attempts} attempts. Aborting sync.");
+                        return;
+                    }
+
+                    _logger.LogError(ex, $"Failed to download GTFS static data. Retrying in {TimeoutDefaults.StaticData.RetryTimeoutSeconds} seconds...");
+                    await Task.Delay(TimeSpan.FromSeconds(TimeoutDefaults.StaticData.RetryTimeoutSeconds));
+                }
             }
 
             using IServiceScope scope = _serviceProvider.CreateScope();
@@ -215,11 +243,16 @@ namespace PassengerManager.Server.Services.Background
 
                 try
                 {
+                    _logger.LogInformation("Importing agencies...");
                     await ImportBulkUpsert<Shared.Models.Agency, Server.Services.Maps.AgencyMap>(archive, "agency.txt", context, a => a.AgencyId);
+                    _logger.LogInformation("Importing stops...");
                     await ImportBulkUpsert<Shared.Models.Stop, Server.Services.Maps.StopMap>(archive, "stops.txt", context, s => s.StopId);
+                    _logger.LogInformation("Importing routes...");
                     await ImportBulkUpsert<Shared.Models.Route, Server.Services.Maps.RouteMap>(archive, "routes.txt", context, r => r.RouteId);
-                    await ImportBulkUpsert<Shared.Models.Trip, Server.Services.Maps.TripMap>(archive, "trips.txt", context, t => t.TripId);
+                    _logger.LogInformation("Importing shapes...");
                     await ProcessShapes(archive, context);
+                    _logger.LogInformation("Importing trips...");
+                    await ImportBulkUpsert<Shared.Models.Trip, Server.Services.Maps.TripMap>(archive, "trips.txt", context, t => t.TripId);
 
                     await transaction.CommitAsync();
                     _logger.LogInformation("Successful GTFS static data sync complete.");

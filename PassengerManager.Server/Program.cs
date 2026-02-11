@@ -1,5 +1,9 @@
 
+
 using Microsoft.EntityFrameworkCore;
+using PassengerManager.Server.Services;
+using PassengerManager.Server.Services.Background;
+using System.Text;
 
 namespace PassengerManager.Server
 {
@@ -7,6 +11,8 @@ namespace PassengerManager.Server
     {
         public static void Main(string[] args)
         {
+            Console.OutputEncoding = Encoding.UTF8;
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Add DB context
@@ -14,7 +20,13 @@ namespace PassengerManager.Server
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             // Add services to the container.
+            builder.Services.AddHttpClient();
 
+            builder.Services.AddHostedService<StaticSyncService>();
+            builder.Services.AddHostedService<VehicleSyncService>();
+            builder.Services.AddHostedService<TripSyncService>();
+
+            builder.Services.AddGrpc();
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -30,7 +42,7 @@ namespace PassengerManager.Server
 
             app.UseAuthorization();
 
-
+            app.MapGrpcService<TransportService>();
             app.MapControllers();
 
             app.Run();

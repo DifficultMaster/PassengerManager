@@ -1,4 +1,7 @@
 ﻿using CsvHelper.Configuration;
+using PassengerManager.Server.Services.Maps.Converters;
+using PassengerManager.Server.Services.Static;
+using static PassengerManager.Server.Services.Static.MapConstraints;
 
 namespace PassengerManager.Server.Services.Maps
 {
@@ -6,7 +9,8 @@ namespace PassengerManager.Server.Services.Maps
     {
         public StopMap()
         {
-            Map(m => m.StopId).Name("stop_id");
+            Map(m => m.StopId).Name("stop_id")
+                .TypeConverter(new MaxLengthConverter(MapConstraints.MaxKeyLength, truncate: true));
 
             Map(m => m.Name).Name("stop_name");
 
@@ -20,7 +24,8 @@ namespace PassengerManager.Server.Services.Maps
 
             Map(m => m.PlatformCode).Name("platform_code").Optional();
 
-            Map(m => m.Code).Name("stop_code").Optional();
+            Map(m => m.Code).Name("stop_code")
+                .TypeConverter(new MaxLengthConverter(MapConstraints.Stop.MaxCodeLength, truncate: true));
         }
     }
 }

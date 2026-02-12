@@ -30,6 +30,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Protobuf Include="..\PassengerManager.Shared\Protos\auth.proto" GrpcServices="Server">
+      <Link>Protos\auth.proto</Link>
+    </Protobuf>
     <Protobuf Include="..\PassengerManager.Shared\Protos\passenger_manager.proto" GrpcServices="Server">
       <Link>Protos\passenger_manager.proto</Link>
     </Protobuf>

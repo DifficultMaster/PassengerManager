@@ -1,11 +1,13 @@
 ﻿using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
+using PassengerManager.Server.Extensions;
 using PassengerManager.Server.Models;
 using PassengerManager.Server.Services.Security;
 using PassengerManager.Server.Services.Static;
 using PassengerManager.Shared.Models;
 using PassengerManager.Shared.Protos;
 using System;
+using System.Security.Claims;
 using static PassengerManager.Server.Services.Static.AuthDefaults;
 
 namespace PassengerManager.Server.Services
@@ -14,11 +16,21 @@ namespace PassengerManager.Server.Services
     {
         private readonly ILogger<AuthService> _logger;
         private readonly PassengerManagerContext _context;
+        private readonly ITokenService _tokenService;
 
-        public AuthService(ILogger<AuthService> logger, PassengerManagerContext context)
+        private struct DriverProcessResult
+        {
+            public DriverLoginResponse Response;
+            public Shared.Models.LoginAudit Audit;
+            public Shared.Models.Shift? NewShift;
+            public Shared.Models.User? DriverUser;
+        }
+
+        public AuthService(ILogger<AuthService> logger, PassengerManagerContext context, ITokenService tokenService)
         {
             _logger = logger;
             _context = context;
+            _tokenService = tokenService;
         }
 
         private static void ResetLockout(Shared.Models.User user)
@@ -175,12 +187,13 @@ namespace PassengerManager.Server.Services
             ResetLockout(user);
             user.LastLogin = DateTime.UtcNow;
             audit.IsSuccess = true;
-            
+
+            string token = _tokenService.GenerateIdToken(user);            
             return (new StaffLoginResponse
             {
                 Success = true,
                 Message = "Login successful",
-                Token = GenerateJwtToken(user),
+                Token = token,
                 FullName = user.FullName ?? string.Empty,
                 RoleName = user.Role.RoleName,
                 AccessLevel = user.Role.AccessLevel,
@@ -197,13 +210,27 @@ namespace PassengerManager.Server.Services
 
             try
             {
-                var (response, audit) = await ProcessDriverLogin(request);
+                DriverProcessResult result = await ProcessDriverLogin(request, context);
 
-                _context.LoginAudits.Add(audit);
+                _context.LoginAudits.Add(result.Audit);
+
+                if (result.NewShift != null)
+                {
+                    _context.Shifts.Add(result.NewShift);
+                }
+
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
 
-                return response;
+                DriverLoginResponse finalResponse = result.Response;
+                if (finalResponse.Success && result.NewShift != null)
+                {
+                    Shared.Models.User driverUser = result.DriverUser!;
+                    finalResponse.ShiftId = result.NewShift.Id;
+                    finalResponse.Token = _tokenService.GenerateDriverToken(driverUser, result.NewShift.Id, result.NewShift.VehicleId);
+                }
+
+                await transaction.CommitAsync();
+                return finalResponse;
             }
             catch (Exception ex)
             {
@@ -219,7 +246,7 @@ namespace PassengerManager.Server.Services
             }
         }
 
-        private async Task<(DriverLoginResponse Response, Shared.Models.LoginAudit Audit)> ProcessDriverLogin(
+        private async Task<DriverProcessResult> ProcessDriverLogin(
             DriverLoginRequest request, ServerCallContext context)
         { 
             Shared.Models.LoginAudit audit = new Shared.Models.LoginAudit
@@ -234,12 +261,16 @@ namespace PassengerManager.Server.Services
             // CASE: Failure - Invalid User ID format
             if (!int.TryParse(request.UserId, out int driverId))
             {
-                return (new DriverLoginResponse
+                return new DriverProcessResult
                 {
-                    Success = false,
-                    Message = "Invalid driver ID format",
-                    Code = AuthResultCode.InvalidLoginFormat
-                }, audit);
+                    Response = new DriverLoginResponse
+                    {
+                        Success = false,
+                        Message = "Invalid driver ID format",
+                        Code = AuthResultCode.InvalidLoginFormat
+                    },
+                    Audit = audit
+                };
             }
 
             Shared.Models.User? user = await _context.Users
@@ -249,25 +280,33 @@ namespace PassengerManager.Server.Services
             // CASE: Failure - Invalid User ID
             if (user == null)
             {
-                return (new DriverLoginResponse
+                return new DriverProcessResult
                 {
-                    Success = false,
-                    Message = $"Driver {request.UserId} not found",
-                    Code = AuthResultCode.InvalidLogin
-                }, audit);
+                    Response = new DriverLoginResponse
+                    {
+                        Success = false,
+                        Message = $"Driver {request.UserId} not found",
+                        Code = AuthResultCode.InvalidLogin
+                    },
+                    Audit = audit
+                };
             }
 
             // CASE: Failure - Wrong UI
             if (user.Role == null || !user.Role.RoleName.Equals("Driver", StringComparison.OrdinalIgnoreCase))
             {
-                return (new DriverLoginResponse
+                return new DriverProcessResult
                 {
-                    Success = false,
-                    Message = user.Role == null
+                    Response = new DriverLoginResponse
+                    {
+                        Success = false,
+                        Message = user.Role == null
                         ? "User has no assigned role"
                         : "Staff must use desktop mode to log in",
-                    Code = AuthResultCode.InvalidMode
-                }, audit);
+                        Code = AuthResultCode.InvalidMode
+                    },
+                    Audit = audit
+                };
             }
 
             Shared.Models.Vehicle? vehicle = await _context.Vehicles
@@ -276,55 +315,98 @@ namespace PassengerManager.Server.Services
             // CASE: Failure - Invalid Vehicle ID
             if (vehicle == null)
             {
-                return (new DriverLoginResponse
+                return new DriverProcessResult
                 {
-                    Success = false,
-                    Message = $"Vehicle {request.VehicleId} not found",
-                    Code = AuthResultCode.InvalidVehicle
-                }, audit);
+                    Response = new DriverLoginResponse
+                    {
+                        Success = false,
+                        Message = $"Vehicle {request.VehicleId} not found",
+                        Code = AuthResultCode.InvalidVehicle
+                    }, 
+                    Audit = audit
+                };
             }
 
             // CASE: Failure - Account lockout
             if (user.IsLockedOut == true && user.LockoutEnd > DateTime.UtcNow)
             {
                 double remaining = Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalSeconds);
-                return (new DriverLoginResponse
+                return new DriverProcessResult 
                 {
-                    Success = false,
-                    Message = $"Account is locked. Try again in {remaining} second(s)",
-                    Code = AuthResultCode.AccountLockout
-                }, audit);
+                    Response = new DriverLoginResponse
+                    {
+                        Success = false,
+                        Message = $"Account is locked. Try again in {remaining} second(s)",
+                        Code = AuthResultCode.AccountLockout
+                    },
+                    Audit = audit
+                };
             }
 
             // CASE: Failure - Incorrect PIN
             if (!PasswordHandler.VerifyPassword(request.Pin, user.PasswordHash))
             {
                 IncrementFailedAttempts(user, false);
-                return (new DriverLoginResponse
+                return new DriverProcessResult
                 {
-                    Success = false,
-                    Message = "Incorrect PIN",
-                    Code = AuthResultCode.InvalidPassword
-                }, audit);
+                    Response = new DriverLoginResponse
+                    {
+                        Success = false,
+                        Message = "Incorrect PIN",
+                        Code = AuthResultCode.InvalidPassword
+                    },
+                    Audit = audit
+                };
             }
 
-            // Shift logic
-
             // CASE: Success
+            List<string> availableRoutes = await _context.Routes
+                .Where(r => r.AgencyId == vehicle.AgencyId)
+                .OrderBy(r => r.ShortName)
+                .Select (r => r.ShortName)
+                .ToListAsync();
+
             ResetLockout(user);
             user.LastLogin = DateTime.UtcNow;
             audit.IsSuccess = true;
+            audit.UserId = user.Id;
 
-            return (new DriverLoginResponse
+            List<Shared.Models.Shift> openShifts = await _context.Shifts
+                .Where(s => s.VehicleId == request.VehicleId && s.EndTime == null)
+                .ToListAsync();
+
+            foreach (Shared.Models.Shift shift in openShifts)
+            {
+                shift.EndTime = DateTime.UtcNow;
+            }
+
+            Shared.Models.Shift newShift = new Shared.Models.Shift
+            {
+                UserId = user.Id,
+                VehicleId = request.VehicleId,
+                StartTime = DateTime.UtcNow,
+                IsApproved = true,
+                RouteId = null,
+                CurrentTripId = null
+            };
+
+            DriverLoginResponse response = new DriverLoginResponse
             {
                 Success = true,
                 Message = "Login successful",
-                Token = GenerateJwtToken(user),
                 DriverName = user.FullName ?? string.Empty,
-                AssignedRouteId = ,
-                ShiftId = ,
                 Code = AuthResultCode.Success
-            }, audit);
+            };
+
+            response.AvailableRoutes.AddRange(availableRoutes);
+
+            return new DriverProcessResult
+            {
+                Response = response,
+                Audit = audit,
+                NewShift = newShift,
+                DriverUser = user
+            };
         }
 
         public override async Task<PasswordChangeResponse> PasswordChange(PasswordChangeRequest request, ServerCallContext context)
@@ -364,23 +446,12 @@ namespace PassengerManager.Server.Services
             PasswordChangeRequest request, ServerCallContext context)
         {
             // CASE: Failure - Invalid User ID format
-            if (!int.TryParse(request.UserId, out int userId))
-            {
-                return new PasswordChangeResponse
-                {
-                    Success = false,
-                    Message = "Invalid driver ID format",
-                    Code = AuthResultCode.InvalidLoginFormat
-                };
-            }
+            ClaimsPrincipal? userPrincipal = context.GetHttpContext().User;
+            int userId = userPrincipal.GetUserId();
 
             Shared.Models.User? user = await _context.Users
                 .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Id == userId);
-
-            bool isStaff = user?.Role != null && !user.Role.RoleName.Equals("Driver", StringComparison.OrdinalIgnoreCase);
-            int minPasswordLength = isStaff ? AuthDefaults.Staff.MinPasswordLength : AuthDefaults.Terminal.MinPasswordLength;
-            int recentPasswordHistoryCount = isStaff ? AuthDefaults.Staff.RecentPasswordHistoryCount : AuthDefaults.Terminal.RecentPasswordHistoryCount;
+                .FirstOrDefaultAsync(u => u.Id == userId);            
 
             // CASE: Failure - Invalid User ID
             if (user == null)
@@ -390,6 +461,22 @@ namespace PassengerManager.Server.Services
                     Success = false,
                     Message = "An error occurred during password change. Please try again later.",
                     Code = AuthResultCode.Unknown
+                };
+            }
+
+            bool isStaff = user?.Role != null && !user.Role.RoleName.Equals("Driver", StringComparison.OrdinalIgnoreCase);
+            int minPasswordLength = isStaff ? AuthDefaults.Staff.MinPasswordLength : AuthDefaults.Terminal.MinPasswordLength;
+            int recentPasswordHistoryCount = isStaff ? AuthDefaults.Staff.RecentPasswordHistoryCount : AuthDefaults.Terminal.RecentPasswordHistoryCount;
+
+            // CASE: Failure - Incorrect current password
+            if (!PasswordHandler.VerifyPassword(request.CurrentPassword, user.PasswordHash))
+            {
+                IncrementFailedAttempts(user, isStaff);
+                return new PasswordChangeResponse
+                {
+                    Success = false,
+                    Message = "Incorrect current password",
+                    Code = AuthResultCode.InvalidPassword
                 };
             }
 
@@ -413,18 +500,6 @@ namespace PassengerManager.Server.Services
                     Success = false,
                     Message = $"New password must be at least {minPasswordLength} characters long",
                     Code = AuthResultCode.InvalidPasswordFormat
-                };
-            }
-
-            // CASE: Failure - Incorrect current password
-            if (!PasswordHandler.VerifyPassword(request.CurrentPassword, user.PasswordHash))
-            {
-                IncrementFailedAttempts(user, isStaff);
-                return new PasswordChangeResponse
-                {
-                    Success = false,
-                    Message = "Incorrect current password",
-                    Code = AuthResultCode.InvalidPassword
                 };
             }
 
@@ -461,3 +536,10 @@ namespace PassengerManager.Server.Services
         }              
     }
 }
+
+// TODO:
+// 0. Finish with the Jwts in this file
+// 1. logic for resetting passwords or setting passwords for new accs (perhaps, password generation?)
+// 2. test long-term background service stability
+// 3. implement shift and shiftId logic (core Driver item) - both in theory and in practise
+// 4. better server UI

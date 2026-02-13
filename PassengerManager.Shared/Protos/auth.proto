@@ -24,6 +24,7 @@ enum AuthResultCode
 	INVALID_LOGIN_FORMAT = 8;
 	INVALID_PASSWORD_FORMAT = 9;
 	INVALID_PASSWORD_HISTORY = 10;
+	UNAUTHORIZED = 11;
 }
 
 message StaffLoginRequest
@@ -59,14 +60,13 @@ message DriverLoginResponse
 	string token = 4;
 	int64 shift_id = 5;
 	string driver_name = 6;
-	string assigned_route_id = 7;
+	repeated string available_routes = 7;
 }
 
 message PasswordChangeRequest
 {
-	string user_id = 1;
-	string current_password = 2;
-	string new_password = 3;
+	string current_password = 1;
+	string new_password = 2;
 }
 
 message PasswordChangeResponse

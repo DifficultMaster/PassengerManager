@@ -31,6 +31,8 @@ public partial class Route
 
     public virtual ICollection<ServiceAlert> ServiceAlerts { get; set; } = new List<ServiceAlert>();
 
+    public virtual ICollection<Shift> Shifts { get; set; } = new List<Shift>();
+
     public virtual ICollection<Telemetry> Telemetries { get; set; } = new List<Telemetry>();
 
     public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();

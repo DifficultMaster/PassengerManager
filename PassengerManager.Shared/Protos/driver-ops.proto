@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+option csharp_namespace = "PassengerManager.Shared.Protos";
+
+package driver;
+
+service DriverOpsService
+{
+	rpc SetShiftRoute (SetShiftRouteRequest) returns (SetShiftRouteResponse);
+
+	rpc GetRouteTrips (GetRouteTripsRequest) returns (GetRouteTripsResponse);
+	rpc SetShiftTrip (SetShiftTripRequest) returns (SetShiftTripResponse);
+	rpc EndShift(EndShiftRequest) returns (EndShiftResponse);
+}
+
+enum DriverOpsResultCode
+{
+	SUCCESS = 0;
+	UNKNOWN = 1;	
+	UNAUTHORIZED = 2;
+	SHIFT_INACTIVE = 3;
+}
+
+message SetShiftRouteRequest
+{
+	string route_id = 1;
+}
+
+message SetShiftRouteResponse
+{
+	bool success = 1;
+	string message = 2;
+	DriverOpsResultCode code = 3;
+}
+
+message GetRouteTripsRequest
+{
+	int64 route_id = 1;
+}
+
+message RouteTripOption
+{
+	string trip_id = 1;
+	string headsign = 2;
+	int32 direction_id = 3;
+}
+
+message GetRouteTripsResponse
+{
+	repeated RouteTripOption options = 1;
+}
+
+message SetShiftTripRequest
+{
+	int64 trip_id = 1;
+}
+
+message SetShiftTripResponse
+{
+	bool success = 1;
+	string message = 2;
+	DriverOpsResultCode code = 3;
+}
+
+message EndShiftRequest
+{
+}
+
+message EndShiftResponse
+{
+	bool success = 1;
+	string message = 2;
+	DriverOpsResultCode code = 3;
+}

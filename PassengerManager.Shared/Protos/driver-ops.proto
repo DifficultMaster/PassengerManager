@@ -11,6 +11,10 @@ service DriverOpsService
 	rpc GetRouteTrips (GetRouteTripsRequest) returns (GetRouteTripsResponse);
 	rpc SetShiftTrip (SetShiftTripRequest) returns (SetShiftTripResponse);
 	rpc EndShift(EndShiftRequest) returns (EndShiftResponse);
+
+	rpc SendHeartbeat (HeartbeatRequest) returns (HeartbeatResponse);
+	rpc ReportIncident (ReportIncidentRequest) returns (ReportIncidentResponse);
+	rpc GetTripShape (GetTripShapeRequest) returns (GetTripShapeResponse);
 }
 
 enum DriverOpsResultCode
@@ -19,6 +23,16 @@ enum DriverOpsResultCode
 	UNKNOWN = 1;	
 	UNAUTHORIZED = 2;
 	SHIFT_INACTIVE = 3;
+}
+
+enum IncidentType
+{
+	OTHER = 0;
+	TRAFFIC = 1;
+	DETOUR = 2;
+	ACCIDENT = 3;
+	BREAKDOWN = 4;
+	EMERGENCY = 5;
 }
 
 message SetShiftRouteRequest
@@ -35,7 +49,7 @@ message SetShiftRouteResponse
 
 message GetRouteTripsRequest
 {
-	int64 route_id = 1;
+	string route_id = 1;
 }
 
 message RouteTripOption
@@ -47,12 +61,15 @@ message RouteTripOption
 
 message GetRouteTripsResponse
 {
-	repeated RouteTripOption options = 1;
+	bool success = 1;
+	string message = 2;
+	DriverOpsResultCode code = 3;
+	repeated RouteTripOption options = 4;
 }
 
 message SetShiftTripRequest
 {
-	int64 trip_id = 1;
+	string trip_id = 1;
 }
 
 message SetShiftTripResponse
@@ -72,3 +89,48 @@ message EndShiftResponse
 	string message = 2;
 	DriverOpsResultCode code = 3;
 }
+
+message HeartbeatRequest
+{
+	double latitude = 1;
+	double longitude = 2;
+	bool is_app_in_foreground = 3;
+}
+
+message HeartbeatResponse
+{
+	bool success = 1;
+}
+
+message ReportIncidentRequest
+{
+	IncidentType type = 1;
+	string description = 2;
+	double latitude = 3;
+	double longitude = 4;
+}
+
+message ReportIncidentResponse
+{
+	bool success = 1;
+}
+
+message GetTripShapeRequest
+{
+	string trip_id = 1;
+}
+
+message ShapePoint
+{
+	double latitude = 1;
+	double longitude = 2;
+	int32 sequence = 3;
+}
+
+message GetTripShapeResponse
+{
+	repeated ShapePoint points = 1;
+	string color_hex = 2;
+}
+
+

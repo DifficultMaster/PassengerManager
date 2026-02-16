@@ -1,0 +1,51 @@
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
+
+namespace PassengerManager.Server.Hubs
+{
+    [Authorize(Roles = "Driver")]
+    public class DriverHub : Hub
+    {
+        private string? TryGetAgencyId()
+        {
+            ClaimsPrincipal? user = Context.User;
+            return user == null ? null : (user.FindFirst("AgencyId")?.Value ?? string.Empty);
+        }
+
+        public override async Task OnConnectedAsync()
+        {
+            string? agencyId = TryGetAgencyId();
+
+            if (agencyId == null)
+            {
+                Context.Abort();
+                return;
+            }
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"Agency_{agencyId}_Drivers");
+            await base.OnConnectedAsync();
+        }
+
+        public async Task SwitchRouteGroup(string? oldRouteId, string? newRouteId)
+        {
+            string? agencyId = TryGetAgencyId();
+
+            if (agencyId == null)
+            {
+                Context.Abort();
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(oldRouteId))
+            {
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"Agency_{agencyId}_Route_{oldRouteId}_Drivers");
+            }        
+
+            if (!string.IsNullOrEmpty(newRouteId))
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"Agency_{agencyId}_Route_{newRouteId}_Drivers");
+            }
+        }        
+    }
+}

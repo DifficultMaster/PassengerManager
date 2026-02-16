@@ -1,6 +1,5 @@
-
-
 using Microsoft.EntityFrameworkCore;
+using PassengerManager.Server.Hubs;
 using PassengerManager.Server.Services;
 using PassengerManager.Server.Services.Background;
 using System.Text;
@@ -42,8 +41,10 @@ namespace PassengerManager.Server
 
             app.UseAuthorization();
 
-            app.MapGrpcService<TransportService>();
+            //app.MapGrpcService<TransportService>();
             app.MapControllers();
+            app.MapHub<DispatcherHub>("/dispatcherHub");
+            app.MapHub<DriverHub>("/driverHub");
 
             app.Run();
         }

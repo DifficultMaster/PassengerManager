@@ -165,7 +165,7 @@ namespace PassengerManager.Server.Services.Background
             {
                 try
                 {
-                    if (_configuration.GetValue<bool>("GtfsSettings:StaticDataAutoSyncEnabled", false))
+                    if (_configuration.GetValue<bool>("GtfsSettings:StaticDataAutoSyncEnabled", true))
                     {
                         await RunSync();
                     }

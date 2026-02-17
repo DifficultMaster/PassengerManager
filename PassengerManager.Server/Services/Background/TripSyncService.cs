@@ -1,9 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Google.Protobuf;
+using Microsoft.EntityFrameworkCore;
 using PassengerManager.Server.Models;
 using PassengerManager.Server.Protos.Static;
 using PassengerManager.Server.Services.Static;
 using PassengerManager.Shared.Models;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace PassengerManager.Server.Services.Background
 {
@@ -12,14 +15,21 @@ namespace PassengerManager.Server.Services.Background
         private readonly IServiceProvider _serviceProvider;
         private readonly IConfiguration _configuration;
         private readonly ILogger<TripSyncService> _logger;
-        private readonly HttpClient _http;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public TripSyncService(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<TripSyncService> logger, IHttpClientFactory httpClientFactory)
+        private DateTimeOffset? _lastUpdated = null;
+        private EntityTagHeaderValue? _lastEntityTag = null;
+
+        public TripSyncService(
+            IServiceProvider serviceProvider, 
+            IConfiguration configuration, 
+            ILogger<TripSyncService> logger, 
+            IHttpClientFactory httpClientFactory)
         {
             _serviceProvider = serviceProvider;
             _configuration = configuration;
             _logger = logger;
-            _http = httpClientFactory.CreateClient();
+            _httpClientFactory = httpClientFactory;
         }
 
         private async Task ProcessTripUpdates(FeedMessage feed, PassengerManagerContext context)
@@ -219,47 +229,81 @@ namespace PassengerManager.Server.Services.Background
         {
             await Task.Yield();
 
-            while (!token.IsCancellationRequested)
+            int interval = _configuration.GetValue<int>("GtfsSettings:TripDataSyncIntervalSeconds", AppDefaults.Sync.TripIntervalSeconds);
+            bool isEnabled = _configuration.GetValue<bool>("GtfsSettings:TripDataAutoSyncEnabled", true);
+
+            if (!isEnabled)
+            {
+                _logger.LogInformation("TripSyncService is disabled via config");
+                return;
+            }
+
+            using PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromSeconds(interval));
+            while (await timer.WaitForNextTickAsync(token))
             {
                 try
                 {
-                    if (_configuration.GetValue<bool>("GtfsSettings:StaticDataAutoSyncEnabled", false))
-                    {
-                        await RunSync();
-                    }
-
-                    await Task.Delay(TimeSpan
-                        .FromSeconds(_configuration.GetValue<int>("GtfsSettings:TripDataSyncIntervalSeconds", AppDefaults.Sync.TripIntervalSeconds)), token);
-                }
-                catch (OperationCanceledException) when (token.IsCancellationRequested)
-                {
-                    break;
+                    await RunSync(token);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Unhandled exception in TripSyncService.");
-                    await Task.Delay(TimeSpan.FromSeconds(10), token);
                 }
             }
         }
 
-        public async Task RunSync()
+        public async Task RunSync(CancellationToken token)
         {
             string url = _configuration.GetValue<string>("GtfsSettings:TripDataUrl") ?? string.Empty;
             if (string.IsNullOrEmpty(url)) return;
+
+            HttpClient client = _httpClientFactory.CreateClient("GtfsClient");
+            using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
+
+            if (_lastUpdated.HasValue)
+            {
+                request.Headers.IfModifiedSince = _lastUpdated;
+            }
+            if (_lastEntityTag != null)
+            {
+                request.Headers.IfNoneMatch.Add(_lastEntityTag);
+            }
+
+            using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
+            {
+                return;
+            }
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning($"Failed to download GTFS realtime trip data. GTFS feed failed: {response.StatusCode}");
+                return;
+            }
 
             FeedMessage? feed = null;
 
             try
             {
-                using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutDefaults.TripData.DownloadTimeoutSeconds));
-                byte[] data = await _http.GetByteArrayAsync(url, cts.Token);
+                using MemoryStream memoryStream = new MemoryStream();
+                await response.Content.CopyToAsync(memoryStream, token);
 
-                feed = FeedMessage.Parser.ParseFrom(data);
+                memoryStream.Position = 0;
+                feed = FeedMessage.Parser.ParseFrom(memoryStream);
             }
+            catch (InvalidProtocolBufferException ex)
+            {
+                _logger.LogWarning($"Failed to download GTFS realtime trip data. Downloaded file is corrupt or not a valid GTFS Protobuf: {ex.Message}");
+                return;
+            }
+            catch (IOException ex)
+            {
+                _logger.LogWarning($"Failed to download GTFS realtime trip data. Network interrupted during download: {ex.Message}");
+                return;
+            }            
             catch (Exception ex)
             {
-                _logger.LogWarning("Failed to download GTFS realtime trip data: {Message}", ex.Message);
+                _logger.LogWarning($"Failed to download GTFS realtime trip data: {ex.Message}");
                 return;
             }
 
@@ -275,6 +319,6 @@ namespace PassengerManager.Server.Services.Background
             {
                 _logger.LogError(ex, $"Failed to process GTFS realtime trip data.");
             }
-        }
+        }       
     }
 }

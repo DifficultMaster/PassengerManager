@@ -34,7 +34,7 @@ namespace PassengerManager.Server.Services.Static
 
         public static class TripData
         {
-            public static int DownloadTimeoutSeconds { get; private set; } = 15;
+            public static int DownloadTimeoutSeconds { get; private set; } = 20;
 
             internal static void Configure(IConfiguration configuration)
             {

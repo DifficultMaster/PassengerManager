@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PassengerManager.Server.Hubs;
 using PassengerManager.Server.Services;
 using PassengerManager.Server.Services.Background;
+using PassengerManager.Server.Services.Static;
 using System.Text;
 
 namespace PassengerManager.Server
@@ -13,6 +14,11 @@ namespace PassengerManager.Server
             Console.OutputEncoding = Encoding.UTF8;
 
             var builder = WebApplication.CreateBuilder(args);
+
+            AppDefaults.Configure(builder.Configuration);
+            TimeoutDefaults.Configure(builder.Configuration);
+            MapConstraints.Configure(builder.Configuration);
+            AuthDefaults.Configure(builder.Configuration);
 
             // Add DB context
             builder.Services.AddDbContext<PassengerManager.Server.Models.PassengerManagerContext>(options =>

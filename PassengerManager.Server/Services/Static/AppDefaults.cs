@@ -1,12 +1,30 @@
-﻿namespace PassengerManager.Server.Services.Static
+﻿using Microsoft.Extensions.Configuration;
+
+namespace PassengerManager.Server.Services.Static
 {
-    public abstract class AppDefaults
+    public static class AppDefaults
     {
         public static class Sync
         {
-            public const int StaticIntervalHours = 24;
-            public const int VehicleIntervalSeconds = 5;
-            public const int TripIntervalSeconds = 15;
+            public static int StaticIntervalHours { get; private set; } = 24;
+
+            public static int VehicleIntervalSeconds { get; private set; } = 5;
+
+            public static int TripIntervalSeconds { get; private set; } = 15;
+
+            internal static void Configure(IConfiguration configuration)
+            {
+                IConfigurationSection section = configuration.GetSection("AppDefaults:Sync");
+
+                StaticIntervalHours = section.GetValue<int?>(nameof(StaticIntervalHours)) ?? StaticIntervalHours;
+                VehicleIntervalSeconds = section.GetValue<int?>(nameof(VehicleIntervalSeconds)) ?? VehicleIntervalSeconds;
+                TripIntervalSeconds = section.GetValue<int?>(nameof(TripIntervalSeconds)) ?? TripIntervalSeconds;
+            }
+        }
+
+        public static void Configure(IConfiguration configuration)
+        {
+            Sync.Configure(configuration);
         }
     }
 }

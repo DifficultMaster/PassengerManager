@@ -9,6 +9,7 @@ service AuthService
 	rpc StaffLogin (StaffLoginRequest) returns (StaffLoginResponse);
 	rpc DriverLogin (DriverLoginRequest) returns (DriverLoginResponse);
 	rpc PasswordChange (PasswordChangeRequest) returns (PasswordChangeResponse);
+	rpc PasswordReset (PasswordResetRequest) returns (PasswordResetResponse);
 }
 
 enum AuthResultCode
@@ -24,7 +25,9 @@ enum AuthResultCode
 	INVALID_LOGIN_FORMAT = 8;
 	INVALID_PASSWORD_FORMAT = 9;
 	INVALID_PASSWORD_HISTORY = 10;
-	UNAUTHORIZED = 11;
+	INVALID_TARGET = 11;
+	CREDENTIAL_OVERDUE = 12;
+	UNAUTHORIZED = 13;
 }
 
 message StaffLoginRequest
@@ -75,3 +78,17 @@ message PasswordChangeResponse
 	string message = 2;
 	AuthResultCode code = 3;
 }
+
+message PasswordResetRequest
+{
+	int32 target_user_id = 1;
+}
+
+message PasswordResetResponse
+{
+	bool success = 1;
+	string message = 2;
+	AuthResultCode code = 3;
+	string generated = 4;
+}
+

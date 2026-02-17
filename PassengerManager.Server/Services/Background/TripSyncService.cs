@@ -269,7 +269,9 @@ namespace PassengerManager.Server.Services.Background
                 request.Headers.IfNoneMatch.Add(_lastEntityTag);
             }
 
-            using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            cts.CancelAfter(TimeSpan.FromSeconds(_configuration.GetValue<int>("HttpSettings:GtfsClient:TimeoutSeconds", 10) + 5));
+            using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
             {

@@ -17,10 +17,10 @@ namespace PassengerManager.Server.Services
     public class AuthService : PassengerManager.Shared.Protos.AuthService.AuthServiceBase
     {
         private readonly ILogger<AuthService> _logger;
-        private readonly PassengerManagerContext _context;
+        private readonly Models.PassengerManagerContext _context;
         private readonly ITokenService _tokenService;
 
-        public AuthService(ILogger<AuthService> logger, PassengerManagerContext context, ITokenService tokenService)
+        public AuthService(ILogger<AuthService> logger, Models.PassengerManagerContext context, ITokenService tokenService)
         {
             _logger = logger;
             _context = context;

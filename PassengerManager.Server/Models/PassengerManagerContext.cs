@@ -14,41 +14,41 @@ public partial class PassengerManagerContext : DbContext
     {
     }
 
-    public virtual DbSet<PassengerManager.Shared.Models.Agency> Agencies { get; set; }
+    public virtual DbSet<Agency> Agencies { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.LoginAudit> LoginAudits { get; set; }
+    public virtual DbSet<LoginAudit> LoginAudits { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.PasswordHistory> PasswordHistories { get; set; }
+    public virtual DbSet<PasswordHistory> PasswordHistories { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.Route> Routes { get; set; }
+    public virtual DbSet<Shared.Models.Route> Routes { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.ServiceAlert> ServiceAlerts { get; set; }
+    public virtual DbSet<ServiceAlert> ServiceAlerts { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.ShapeHeader> ShapeHeaders { get; set; }
+    public virtual DbSet<ShapeHeader> ShapeHeaders { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.ShapePoint> ShapePoints { get; set; }
+    public virtual DbSet<ShapePoint> ShapePoints { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.Shift> Shifts { get; set; }
+    public virtual DbSet<Shift> Shifts { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.Stop> Stops { get; set; }
+    public virtual DbSet<Stop> Stops { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.Telemetry> Telemetries { get; set; }
+    public virtual DbSet<Telemetry> Telemetries { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.Transaction> Transactions { get; set; }
+    public virtual DbSet<Transaction> Transactions { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.Trip> Trips { get; set; }
+    public virtual DbSet<Trip> Trips { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.TripUpdate> TripUpdates { get; set; }
+    public virtual DbSet<TripUpdate> TripUpdates { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.User> Users { get; set; }
+    public virtual DbSet<User> Users { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.UserRole> UserRoles { get; set; }
+    public virtual DbSet<UserRole> UserRoles { get; set; }
 
-    public virtual DbSet<PassengerManager.Shared.Models.Vehicle> Vehicles { get; set; }
+    public virtual DbSet<Vehicle> Vehicles { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<PassengerManager.Shared.Models.Agency>(entity =>
+        modelBuilder.Entity<Agency>(entity =>
         {
             entity.HasKey(e => e.AgencyId).HasName("agencies_pkey");
 
@@ -74,7 +74,7 @@ public partial class PassengerManagerContext : DbContext
             entity.Property(e => e.Url).HasColumnName("url");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.LoginAudit>(entity =>
+        modelBuilder.Entity<LoginAudit>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("login_audit_pkey");
 
@@ -100,7 +100,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasConstraintName("login_audit_user_id_fkey");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.PasswordHistory>(entity =>
+        modelBuilder.Entity<PasswordHistory>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("password_history_pkey");
 
@@ -121,7 +121,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasConstraintName("password_history_user_id_fkey");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.Route>(entity =>
+        modelBuilder.Entity<Shared.Models.Route>(entity =>
         {
             entity.HasKey(e => e.RouteId).HasName("routes_pkey");
 
@@ -157,7 +157,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasConstraintName("routes_agency_id_fkey");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.ServiceAlert>(entity =>
+        modelBuilder.Entity<ServiceAlert>(entity =>
         {
             entity.HasKey(e => e.AlertId).HasName("service_alerts_pkey");
 
@@ -202,7 +202,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasConstraintName("service_alerts_stop_id_fkey");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.ShapeHeader>(entity =>
+        modelBuilder.Entity<ShapeHeader>(entity =>
         {
             entity.HasKey(e => e.ShapeId).HasName("shape_headers_pkey");
 
@@ -215,7 +215,7 @@ public partial class PassengerManagerContext : DbContext
             entity.Property(e => e.TotalDistanceMeters).HasColumnName("total_distance_meters");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.ShapePoint>(entity =>
+        modelBuilder.Entity<ShapePoint>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("shape_points_pkey");
 
@@ -238,7 +238,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasConstraintName("shape_points_shape_id_fkey");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.Shift>(entity =>
+        modelBuilder.Entity<Shift>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("shifts_pkey");
 
@@ -246,13 +246,21 @@ public partial class PassengerManagerContext : DbContext
 
             entity.HasIndex(e => e.VehicleId, "idx_shifts_active").HasFilter("(end_time IS NULL)");
 
+            entity.HasIndex(e => e.RouteId, "idx_shifts_route");
+
             entity.HasIndex(e => e.UserId, "idx_shifts_user");
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CurrentTripId)
+                .HasMaxLength(128)
+                .HasColumnName("current_trip_id");
             entity.Property(e => e.EndTime).HasColumnName("end_time");
             entity.Property(e => e.IsApproved)
                 .HasDefaultValue(true)
                 .HasColumnName("is_approved");
+            entity.Property(e => e.RouteId)
+                .HasMaxLength(128)
+                .HasColumnName("route_id");
             entity.Property(e => e.StartTime)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("start_time");
@@ -260,6 +268,16 @@ public partial class PassengerManagerContext : DbContext
             entity.Property(e => e.VehicleId)
                 .HasMaxLength(128)
                 .HasColumnName("vehicle_id");
+
+            entity.HasOne(d => d.CurrentTrip).WithMany(p => p.Shifts)
+                .HasForeignKey(d => d.CurrentTripId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_shifts_trip");
+
+            entity.HasOne(d => d.Route).WithMany(p => p.Shifts)
+                .HasForeignKey(d => d.RouteId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_shifts_route");
 
             entity.HasOne(d => d.User).WithMany(p => p.Shifts)
                 .HasForeignKey(d => d.UserId)
@@ -272,7 +290,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasConstraintName("shifts_vehicle_id_fkey");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.Stop>(entity =>
+        modelBuilder.Entity<Stop>(entity =>
         {
             entity.HasKey(e => e.StopId).HasName("stops_pkey");
 
@@ -300,7 +318,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasColumnName("wheelchair_boarding");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.Telemetry>(entity =>
+        modelBuilder.Entity<Telemetry>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("telemetry_pkey");
 
@@ -348,7 +366,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasConstraintName("telemetry_vehicle_id_fkey");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.Transaction>(entity =>
+        modelBuilder.Entity<Transaction>(entity =>
         {
             entity.HasKey(e => e.TransactionUuid).HasName("transactions_pkey");
 
@@ -394,7 +412,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasConstraintName("transactions_vehicle_id_fkey");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.Trip>(entity =>
+        modelBuilder.Entity<Trip>(entity =>
         {
             entity.HasKey(e => e.TripId).HasName("trips_pkey");
 
@@ -428,7 +446,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasConstraintName("trips_shape_id_fkey");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.TripUpdate>(entity =>
+        modelBuilder.Entity<TripUpdate>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("trip_updates_pkey");
 
@@ -453,7 +471,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasConstraintName("trip_updates_vehicle_id_fkey");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.User>(entity =>
+        modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("users_pkey");
 
@@ -497,7 +515,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasConstraintName("users_role_id_fkey");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.UserRole>(entity =>
+        modelBuilder.Entity<UserRole>(entity =>
         {
             entity.HasKey(e => e.RoleId).HasName("user_roles_pkey");
 
@@ -519,7 +537,7 @@ public partial class PassengerManagerContext : DbContext
                 .HasColumnName("role_name");
         });
 
-        modelBuilder.Entity<PassengerManager.Shared.Models.Vehicle>(entity =>
+        modelBuilder.Entity<Vehicle>(entity =>
         {
             entity.HasKey(e => e.VehicleId).HasName("vehicles_pkey");
 

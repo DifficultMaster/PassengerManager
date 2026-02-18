@@ -5,10 +5,6 @@ using static PassengerManager.Server.Services.Static.AuthDefaults;
 
 namespace PassengerManager.Server.Services.Security
 {
-    //DEFAULT PASSWORD POLICY DICTATES AS FOLLOWS:
-    //1.
-    //2.
-
     public static class PasswordHandler
     {
         public static string GetHashedPassword(string password)

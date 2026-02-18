@@ -1,15 +1,48 @@
 syntax = "proto3";
 
+import "google/api/annotations.proto";
+
 option csharp_namespace = "PassengerManager.Shared.Protos";
 
 package auth;
 
 service AuthService
 {
-	rpc StaffLogin (StaffLoginRequest) returns (StaffLoginResponse);
-	rpc DriverLogin (DriverLoginRequest) returns (DriverLoginResponse);
-	rpc PasswordChange (PasswordChangeRequest) returns (PasswordChangeResponse);
-	rpc PasswordReset (PasswordResetRequest) returns (PasswordResetResponse);
+	rpc StaffLogin (StaffLoginRequest) returns (StaffLoginResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/auth/login/staff"
+			body: "*"
+		};
+	}
+
+	rpc DriverLogin (DriverLoginRequest) returns (DriverLoginResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/auth/login/driver"
+			body: "*"
+		};
+	}
+
+	rpc PasswordChange (PasswordChangeRequest) returns (PasswordChangeResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/auth/password/change"
+			body: "*"
+		};
+	}
+
+	rpc PasswordReset (PasswordResetRequest) returns (PasswordResetResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/auth/password/reset"
+			body: "*"
+		};
+	}
 }
 
 enum AuthResultCode

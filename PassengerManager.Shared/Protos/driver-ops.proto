@@ -1,20 +1,73 @@
 syntax = "proto3";
 
+import "google/api/annotations.proto";
+
 option csharp_namespace = "PassengerManager.Shared.Protos";
 
 package driver;
 
 service DriverOpsService
 {
-	rpc SetShiftRoute (SetShiftRouteRequest) returns (SetShiftRouteResponse);
+	rpc SetShiftRoute (SetShiftRouteRequest) returns (SetShiftRouteResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/driver/shift/route"
+			body: "*"
+		};
+	}
 
-	rpc GetRouteTrips (GetRouteTripsRequest) returns (GetRouteTripsResponse);
-	rpc SetShiftTrip (SetShiftTripRequest) returns (SetShiftTripResponse);
-	rpc EndShift(EndShiftRequest) returns (EndShiftResponse);
+	rpc GetRouteTrips (GetRouteTripsRequest) returns (GetRouteTripsResponse)
+	{
+		option (google.api.http) =
+		{
+			get: "/v1/routes/{route_id}/trips"
+		};
+	}
 
-	rpc SendHeartbeat (HeartbeatRequest) returns (HeartbeatResponse);
-	rpc ReportIncident (ReportIncidentRequest) returns (ReportIncidentResponse);
-	rpc GetTripShape (GetTripShapeRequest) returns (GetTripShapeResponse);
+	rpc SetShiftTrip (SetShiftTripRequest) returns (SetShiftTripResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/driver/shift/trip"
+			body: "*"
+		};
+	}
+
+	rpc EndShift(EndShiftRequest) returns (EndShiftResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/driver/shift/end"
+			body: "*"
+		};
+	}
+
+	rpc SendHeartbeat (HeartbeatRequest) returns (HeartbeatResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/driver/heartbeat"
+			body: "*"
+		};
+	}
+
+	rpc ReportIncident (ReportIncidentRequest) returns (ReportIncidentResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/driver/incident"
+			body: "*"
+		};
+	}
+
+	rpc GetTripShape (GetTripShapeRequest) returns (GetTripShapeResponse)
+	{
+		option (google.api.http) =
+		{
+			get: "/v1/trips/{trip_id}/shape"
+		};
+	}
 }
 
 enum DriverOpsResultCode

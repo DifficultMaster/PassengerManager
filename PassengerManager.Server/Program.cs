@@ -1,17 +1,69 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using PassengerManager.Server.Hubs;
 using PassengerManager.Server.Services;
 using PassengerManager.Server.Services.Background;
 using PassengerManager.Server.Services.Security;
 using PassengerManager.Server.Services.Static;
 using PassengerManager.Shared.Protos;
+using PassengerManager.Shared.Models;
+using System;
 using System.Net;
 using System.Text;
+using PassengerManager.Server.Models;
+using System.Runtime.CompilerServices;
 
 namespace PassengerManager.Server
 {
     public class Program
     {
+        private static void SetDefaultDatabaseObjects(WebApplication app)
+        {
+            using (IServiceScope scope = app.Services.CreateScope())
+            {
+                Models.PassengerManagerContext context = scope.ServiceProvider.GetRequiredService<Models.PassengerManagerContext>();
+
+                // This is not needed, migrations are used to update DB if necessary
+                // context.Database.EnsureCreated();
+
+                if (!context.Users.Any())
+                {
+                    List<Shared.Models.User> users = new List<User>
+                    {
+                        new User
+                        {
+                            Username = "admin_user",
+                            FullName = "Administrator",
+                            PasswordHash = PasswordHandler.GetHashedPassword("admin_user"),
+                            RoleId = 1,
+                            CreatedAt = DateTime.UtcNow
+                        },
+
+                        new User
+                        {
+                            Username = "dispatcher_user",
+                            FullName = "Dispatcher",
+                            PasswordHash = PasswordHandler.GetHashedPassword("dispatcher_user"),
+                            RoleId = 2,
+                            CreatedAt = DateTime.UtcNow
+                        },
+
+                        new User
+                        {
+                            Username = "driver_user",
+                            FullName = "Driver",
+                            PasswordHash = PasswordHandler.GetHashedPassword("driver_user"),
+                            RoleId = 3,
+                            CreatedAt = DateTime.UtcNow
+                        }
+                    };
+
+                    context.Users.AddRange(users);
+                    context.SaveChanges();                    
+                }
+            }
+        }
+
         public static void Main(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
@@ -52,34 +104,89 @@ namespace PassengerManager.Server
             builder.Services.AddHostedService<VehicleSyncService>();
             builder.Services.AddHostedService<TripSyncService>();
 
-            builder.Services.AddGrpc();
+            // Configure Swagger UI
             builder.Services.AddControllers();
+            builder.Services.AddGrpc().AddJsonTranscoding();
+            builder.Services.AddGrpcSwagger();            
             builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+                {
+                    Title = "PassengerManager API",
+                    Version = "v1"
+                });
+
+                c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                {
+                    Description = "Please enter your JWT token",
+                    Name = "Authorization",
+                    In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT"
+                });
+
+                c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        new List<string>()
+                    }
+                });
+            });
             builder.Services.AddGrpcReflection();
 
-            WebApplication app = builder.Build();
-
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            try
             {
-                app.MapGrpcReflectionService();
+                WebApplication app = builder.Build();
+
+                // Configure the HTTP request pipeline.
+                if (app.Environment.IsDevelopment())
+                {
+                    app.UseSwagger();
+                    app.UseSwaggerUI();
+
+                    app.MapGrpcReflectionService();
+                }
+
+                app.UseAuthorization();
+                app.MapControllers();
+
+                // Map gRPC services
+                app.MapGrpcService<PassengerManager.Server.Services.AuthService>();
+                app.MapGrpcService<PassengerManager.Server.Services.DriverOpsService>();
+                // app.MapGrpcService<PassengerManager.Server.Services.DispatcherOpsService>();
+                // app.MapGrpcService<PassengerManager.Server.Services.AdminOpsService>();
+
+                // Map SignalR Hubs
+                app.MapHub<DispatcherHub>("/dispatcherHub");
+                app.MapHub<DriverHub>("/driverHub");
+                // app.MapHub<AdminHub>("/adminHub");
+
+                SetDefaultDatabaseObjects(app);
+                app.Run();
             }
+            catch (System.Reflection.ReflectionTypeLoadException ex)
+            {
+                Console.WriteLine("--------------------------------------------------");
+                Console.WriteLine("CRITICAL ERROR: MISSING DEPENDENCY");
 
-            app.UseAuthorization();
-            app.MapControllers();
+                foreach (Exception? loaderEx in ex.LoaderExceptions)
+                {
+                    Console.WriteLine($" -> {loaderEx?.Message}");
+                }
+                Console.WriteLine("--------------------------------------------------");
 
-            // Map gRPC services
-            app.MapGrpcService<PassengerManager.Server.Services.AuthService>();
-            app.MapGrpcService<PassengerManager.Server.Services.DriverOpsService>();
-            // app.MapGrpcService<PassengerManager.Server.Services.DispatcherOpsService>();
-            // app.MapGrpcService<PassengerManager.Server.Services.AdminOpsService>();
-
-            // Map SignalR Hubs
-            app.MapHub<DispatcherHub>("/dispatcherHub");
-            app.MapHub<DriverHub>("/driverHub");
-            // app.MapHub<AdminHub>("/adminHub");
-
-            app.Run();
+                throw;
+            }
         }
     }
 }

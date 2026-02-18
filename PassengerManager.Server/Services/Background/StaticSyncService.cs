@@ -29,7 +29,7 @@ namespace PassengerManager.Server.Services.Background
             _http = httpClientFactory.CreateClient();
         }
 
-        private async Task ImportBulkUpsert<TEntity, TMap>(ZipArchive archive, string fileName, PassengerManagerContext context,
+        private async Task ImportBulkUpsert<TEntity, TMap>(ZipArchive archive, string fileName, Models.PassengerManagerContext context,
             Expression<Func<TEntity, string>> keySelector)
             where TEntity : class
             where TMap : ClassMap<TEntity>
@@ -89,7 +89,7 @@ namespace PassengerManager.Server.Services.Background
             context.ChangeTracker.Clear();
         }
 
-        private async Task ProcessShapes(ZipArchive archive, PassengerManagerContext context)
+        private async Task ProcessShapes(ZipArchive archive, Models.PassengerManagerContext context)
         {
             ZipArchiveEntry? entry = archive.GetEntry("shapes.txt");
             if (entry == null) return;
@@ -233,7 +233,7 @@ namespace PassengerManager.Server.Services.Background
             }
 
             using IServiceScope scope = _serviceProvider.CreateScope();
-            PassengerManagerContext context = scope.ServiceProvider.GetRequiredService<PassengerManagerContext>();
+            Models.PassengerManagerContext context = scope.ServiceProvider.GetRequiredService<Models.PassengerManagerContext>();
 
             var strategy = context.Database.CreateExecutionStrategy();
 

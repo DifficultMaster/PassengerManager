@@ -32,7 +32,7 @@ namespace PassengerManager.Server.Services.Background
             _httpClientFactory = httpClientFactory;
         }
 
-        private async Task ProcessTripUpdates(FeedMessage feed, PassengerManagerContext context)
+        private async Task ProcessTripUpdates(FeedMessage feed, Models.PassengerManagerContext context)
         {
             List<FeedEntity> entities = feed.Entity.Where(e => e.TripUpdate != null).ToList();
             if (!entities.Any()) return;
@@ -104,7 +104,7 @@ namespace PassengerManager.Server.Services.Background
             }
         }
 
-        private async Task ProcessAlerts(FeedMessage feed, PassengerManagerContext context)
+        private async Task ProcessAlerts(FeedMessage feed, Models.PassengerManagerContext context)
         {
             List<FeedEntity> entities = feed.Entity.Where(e => e.Alert != null).ToList();
             if (!entities.Any()) return;
@@ -310,7 +310,7 @@ namespace PassengerManager.Server.Services.Background
             }
 
             using IServiceScope scope = _serviceProvider.CreateScope();
-            PassengerManagerContext context = scope.ServiceProvider.GetRequiredService<PassengerManagerContext>();
+            Models.PassengerManagerContext context = scope.ServiceProvider.GetRequiredService<Models.PassengerManagerContext>();
 
             try
             {

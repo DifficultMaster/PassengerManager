@@ -1,19 +1,23 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.2.11415.280 d18.0
+VisualStudioVersion = 18.2.11415.280
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassengerManager.Shared", "PassengerManager.Shared\PassengerManager.Shared.csproj", "{FF96D079-27EF-44FF-8421-4B2F190C54F0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassengerManager.Server", "PassengerManager.Server\PassengerManager.Server.csproj", "{9E8A9C47-6665-4A2B-981E-3C6CE4D08BFD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassengerManager.Client", "PassengerManager.Client\PassengerManager.Client.csproj", "{DF38D31A-236E-48CA-99F6-581BD6002444}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassengerManager.Client.Desktop", "PassengerManager.Client\PassengerManager.Client.Desktop.csproj", "{DF38D31A-236E-48CA-99F6-581BD6002444}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{FAC2CA91-2A03-4CDA-A8F9-1DDA018D52C6}"
 	ProjectSection(SolutionItems) = preProject
 		.env = .env
 		docker-compose.yml = docker-compose.yml
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassengerManager.Client.Core", "PassengerManager.Client.Core\PassengerManager.Client.Core.csproj", "{5CA4E04C-2B00-483F-9218-DE2089FCFD84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassengerManager.Client.Driver", "PassengerManager.Client.Driver\PassengerManager.Client.Driver.csproj", "{2EBE0FE1-AA9D-4930-AA5D-3584EA26D308}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +37,14 @@ Global
 		{DF38D31A-236E-48CA-99F6-581BD6002444}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DF38D31A-236E-48CA-99F6-581BD6002444}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DF38D31A-236E-48CA-99F6-581BD6002444}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5CA4E04C-2B00-483F-9218-DE2089FCFD84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CA4E04C-2B00-483F-9218-DE2089FCFD84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CA4E04C-2B00-483F-9218-DE2089FCFD84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CA4E04C-2B00-483F-9218-DE2089FCFD84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2EBE0FE1-AA9D-4930-AA5D-3584EA26D308}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EBE0FE1-AA9D-4930-AA5D-3584EA26D308}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2EBE0FE1-AA9D-4930-AA5D-3584EA26D308}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2EBE0FE1-AA9D-4930-AA5D-3584EA26D308}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

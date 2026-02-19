@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Google.Protobuf" Version="3.33.5" />
     <PackageReference Include="Grpc.Net.Client" Version="2.76.0" />
     <PackageReference Include="Grpc.Tools" Version="2.78.0">
@@ -19,20 +20,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PassengerManager.Shared\PassengerManager.Shared.csproj" />
+    <Folder Include="Controls\" />
+    <Folder Include="Styles\" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Protos\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Protobuf Include="..\PassengerManager.Shared\Protos\auth.proto" GrpcServices="Client">
-      <Link>Protos\auth.proto</Link>
-    </Protobuf>
-    <Protobuf Include="..\PassengerManager.Shared\Protos\driver-ops.proto" GrpcServices="Client">
-      <Link>Protos\driver-ops.proto</Link>
-    </Protobuf>
+    <ProjectReference Include="..\PassengerManager.Client.Core\PassengerManager.Client.Core.csproj" />
   </ItemGroup>
 
 </Project>

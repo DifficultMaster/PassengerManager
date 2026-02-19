@@ -37,17 +37,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\PassengerManager.Shared\Protos\auth.proto" GrpcServices="Server">
-      <Link>Protos\auth.proto</Link>
-    </Protobuf>
-    <Protobuf Include="..\PassengerManager.Shared\Protos\driver-ops.proto" GrpcServices="Server">
-      <Link>Protos\driver-ops.proto</Link>
-    </Protobuf>
-	<Protobuf Include="Protos\Static\gtfs-realtime.proto" GrpcServices="None">
-	</Protobuf>
-  </ItemGroup>
-
-  <ItemGroup>
     <Folder Include="Controllers\" />
   </ItemGroup>
 

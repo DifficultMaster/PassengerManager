@@ -3,10 +3,20 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:PassengerManager.Client.Driver"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        xmlns:viewmodels="clr-namespace:PassengerManager.Client.Core.ViewModels;assembly=PassengerManager.Client.Core"
+        xmlns:views="clr-namespace:PassengerManager.Client.Driver.Views"        
+        Title="Terminal"
+        WindowState="Maximized"
+        WindowStyle="None"
+        Background="#121212">
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type viewmodels:DriverLoginViewModel}">
+            <views:DriverLoginView />
+        </DataTemplate>
+    </Window.Resources>    
     <Grid>
-
+        <ContentControl Content="{Binding CurrentViewModel}"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"/>
     </Grid>
 </Window>

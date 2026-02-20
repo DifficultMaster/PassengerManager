@@ -293,6 +293,19 @@ namespace PassengerManager.Server.Services
                         // CASE: Failure - Incorrect PIN
                         else if (!PasswordHandler.VerifyPassword(request.Pin, user.PasswordHash))
                         {
+                            DateTime cutoff = DateTime.UtcNow.AddSeconds(-AuthDefaults.Staff.LockoutDurationSeconds);
+                            DateTime? lastAttemptTime = await _context.LoginAudits
+                                .AsNoTracking()
+                                .Where(a => a.UsernameAttempted == request.UserId)
+                                .OrderByDescending(a => a.AttemptTime)
+                                .Select(a => (DateTime?)a.AttemptTime)
+                                .FirstOrDefaultAsync();
+
+                            if (lastAttemptTime.HasValue && lastAttemptTime.Value < cutoff)
+                            {
+                                user.FailedLoginAttempts = 0;
+                            }
+
                             user.FailedLoginAttempts = (user.FailedLoginAttempts ?? 0) + 1;
                             if (user.FailedLoginAttempts >= AuthDefaults.Terminal.MaxFailedAttempts)
                             {
@@ -470,6 +483,17 @@ namespace PassengerManager.Server.Services
                     {
                         Success = false,
                         Message = $"New password must be at least {minPasswordLength} characters long",
+                        Code = AuthResultCode.InvalidPasswordFormat
+                    };
+                }
+
+                // CASE: Failure - Incorrect new password format
+                if (!isStaff && request.NewPassword.Any(c => !char.IsDigit(c)))
+                {
+                    return new PasswordChangeResponse
+                    {
+                        Success = false,
+                        Message = $"Driver passwords can only be numeric",
                         Code = AuthResultCode.InvalidPasswordFormat
                     };
                 }

@@ -20,10 +20,12 @@ namespace PassengerManager.Client.Core.ViewModels
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CurrentInputLength))]
+        [NotifyPropertyChangedFor(nameof(InputCircles))]
         private string _driverId = string.Empty;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CurrentInputLength))]
+        [NotifyPropertyChangedFor(nameof(InputCircles))]
         private string _pin = string.Empty;
 
         [ObservableProperty]
@@ -31,10 +33,11 @@ namespace PassengerManager.Client.Core.ViewModels
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CurrentInputLength))]
+        [NotifyPropertyChangedFor(nameof(InputCircles))]
         private bool _isEnteringPin = false;
 
         [ObservableProperty]
-        private bool _isLoading = false;
+        private bool _isLoading = false;        
 
         public DriverLoginViewModel(
             INavigationService navigationService, 
@@ -56,6 +59,23 @@ namespace PassengerManager.Client.Core.ViewModels
                 _pinLength = pinLength;
             else
                 _pinLength = 8;               
+        }
+
+        public IEnumerable<bool> InputCircles
+        {
+            get
+            {
+                int targetLength = IsEnteringPin ? _pinLength : _idLength;
+                int currentLength = IsEnteringPin ? Pin.Length : DriverId.Length;
+
+                List<bool> circles = new List<bool>();
+                for (int i = 0; i < targetLength; i++)
+                {
+                    circles.Add(i < currentLength);
+                }
+
+                return circles;
+            }
         }
 
         public int CurrentInputLength

@@ -19,8 +19,6 @@
 
   <ItemGroup>
     <Folder Include="Controls\" />
-    <Folder Include="Styles\" />
-    <Folder Include="Views\" />
   </ItemGroup>
 
   <ItemGroup>

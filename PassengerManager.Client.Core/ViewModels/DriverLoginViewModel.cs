@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Configuration;
 using PassengerManager.Client.Core.Services.Interfaces;
 using PassengerManager.Client.Core.Stores;
+using PassengerManager.Shared.Protos;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -11,7 +12,9 @@ namespace PassengerManager.Client.Core.ViewModels
     public partial class DriverLoginViewModel : BaseViewModel
     {
         private readonly IAuthService _authService;
+        private readonly IAuthErrorTranslator _authErrorTranslator;
         private readonly string _vehicleId;
+
         private readonly int _idLength;
         private readonly int _pinLength;
 
@@ -35,11 +38,13 @@ namespace PassengerManager.Client.Core.ViewModels
 
         public DriverLoginViewModel(
             INavigationService navigationService, 
-            AccountStore accountStore,
+            DriverAccountStore accountStore,
             IAuthService authService,
-            IConfiguration config) : base(navigationService, accountStore)
+            IConfiguration config,
+            IAuthErrorTranslator authErrorTranslator) : base(navigationService, accountStore)
         {
             _authService = authService;
+            _authErrorTranslator = authErrorTranslator;
             _vehicleId = config["TerminalSettings:VehicleId"] ?? "UNKNOWN";
 
             if (int.TryParse(config["AuthDefaults:Terminal:DefaultIdLength"] ?? "4", out int idLength))
@@ -139,12 +144,43 @@ namespace PassengerManager.Client.Core.ViewModels
         {
             IsLoading = true;
 
-            Shared.Models.User? user = await _authService.AuthenticateDriverAsync(DriverId, Pin, _vehicleId);
-
-            if (user != null)
+            DriverLoginRequest request = new DriverLoginRequest
             {
+                UserId = DriverId,
+                Pin = Pin,
+                VehicleId = _vehicleId
+            };
 
+            try
+            {
+                DriverLoginResponse response = await _authService.AuthenticateDriverAsync(request);
+
+                if (response.Success)
+                {
+                    DriverAccountStore driverStore = (DriverAccountStore)AccountStore;
+                    driverStore.Login(response);
+
+                    //NavigationService.NavigateTo<DriverDashboardViewModel>();
+                }
+                else
+                {
+                    ErrorMessage = response.Message;
+
+                    DriverId = string.Empty;
+                    Pin = string.Empty;
+                    IsEnteringPin = false;
+                }
             }
+            catch
+            {
+                ErrorMessage = "Network error. Canot reach the server.";
+
+                DriverId = string.Empty;
+                Pin = string.Empty;
+                IsEnteringPin = false;
+            }
+
+            IsLoading = false;
         }
     }
 }

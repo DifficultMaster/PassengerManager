@@ -1,28 +1,28 @@
 ﻿using PassengerManager.Shared.Models;
+using PassengerManager.Shared.Protos;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace PassengerManager.Client.Core.Stores
 {
-    public class AccountStore
+    public abstract class AccountStore
     {
-        public User? CurrentUser { get; private set; }
+        public string Token { get; protected set; } = string.Empty;
 
-        public event Action? CurrentUserChanged;
+        public string DisplayName { get; protected set; } = string.Empty;        
 
-        public void Login(User user)
+        public bool IsLoggedIn => !string.IsNullOrEmpty(Token);
+
+        public event Action? StateChanged;
+
+        public virtual void Logout()
         {
-            CurrentUser = user;
-            CurrentUserChanged?.Invoke();
+            Token = string.Empty;
+            DisplayName = string.Empty;
+            InvokeStateChanged();
         }
 
-        public void Logout()
-        {
-            CurrentUser = null;
-            CurrentUserChanged?.Invoke();
-        }
-
-        public bool IsLoggedIn => CurrentUser != null;
+        protected void InvokeStateChanged() => StateChanged?.Invoke();
     }
 }

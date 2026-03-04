@@ -5,9 +5,11 @@ using System.Windows;
 using PassengerManager.Client.Core.Services;
 using PassengerManager.Client.Core.Stores;
 using PassengerManager.Client.Core.ViewModels;
+using PassengerManager.Client.Driver.ViewModels;
 using PassengerManager.Shared.Protos;
 using PassengerManager.Client.Core.Services.Interfaces;
 using PassengerManager.Client.Core.Services.Translators;
+using System.Globalization;
 
 namespace PassengerManager.Client.Driver
 {
@@ -17,14 +19,33 @@ namespace PassengerManager.Client.Driver
 
         public App()
         {
+            // SET UP TO TEST IN UKRAINIAN (UK)
+            CultureInfo culture = new System.Globalization.CultureInfo("uk");
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
+            System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
+            System.Threading.Thread.CurrentThread.CurrentCulture = culture;
+            System.Threading.Thread.CurrentThread.CurrentUICulture = culture;
+            //
+
             _host = Host.CreateDefaultBuilder()
                 .ConfigureServices((context, services) =>
                 {
-                    string baseUrl = context.Configuration["ApiSettings:BaseUrl"] ?? "https://localhost:5001";
+                    string baseUrl = context.Configuration["ApiSettings:BaseUrl"] ?? "https://localhost:5142";
 
                     services.AddGrpcClient<AuthService.AuthServiceClient>(options =>
                     {
                         options.Address = new Uri(baseUrl);
+                    })
+                    .AddCallCredentials((context, metadata, serviceProvider) =>
+                    {
+                        DriverAccountStore driverAccountStore = serviceProvider.GetRequiredService<DriverAccountStore>();
+
+                        if (!string.IsNullOrEmpty(driverAccountStore.Token))
+                        {
+                            metadata.Add("Authorization", $"Bearer {driverAccountStore.Token}");
+                        }
+
+                        return Task.CompletedTask;
                     });
 
                     services.AddSingleton<IAuthService, GrpcAuthService>();
@@ -46,7 +67,7 @@ namespace PassengerManager.Client.Driver
         }
 
         protected override async void OnStartup(StartupEventArgs e)
-        {
+        {          
             await _host.StartAsync();
 
             INavigationService navigationService = _host.Services.GetRequiredService<INavigationService>();

@@ -1,4 +1,5 @@
 ﻿using Grpc.Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using PassengerManager.Server.Extensions;
 using PassengerManager.Server.Models;
@@ -51,6 +52,7 @@ namespace PassengerManager.Server.Services
             }
         }
 
+        [AllowAnonymous]
         public override async Task<StaffLoginResponse> StaffLogin(StaffLoginRequest request, ServerCallContext context)
         {
             _context.ChangeTracker.Clear();
@@ -113,6 +115,19 @@ namespace PassengerManager.Server.Services
                 // CASE: Failure - Incorrect password
                 else if (!PasswordHandler.VerifyPassword(request.Password, user.PasswordHash))
                 {
+                    DateTime cutoff = DateTime.UtcNow.AddSeconds(-AuthDefaults.Staff.LockoutDurationSeconds);
+                    DateTime? lastAttemptTime = await _context.LoginAudits
+                        .AsNoTracking()
+                        .Where(a => a.UsernameAttempted == request.Username)
+                        .OrderByDescending(a => a.AttemptTime)
+                        .Select(a => (DateTime?)a.AttemptTime)
+                        .FirstOrDefaultAsync();
+
+                    if (lastAttemptTime.HasValue && lastAttemptTime.Value < cutoff)
+                    {
+                        user.FailedLoginAttempts = 0;
+                    }
+
                     audit.UserId = user.Id;
                     user.FailedLoginAttempts = (user.FailedLoginAttempts ?? 0) + 1;
                     if (user.FailedLoginAttempts >= AuthDefaults.Staff.MaxFailedAttempts)
@@ -138,7 +153,7 @@ namespace PassengerManager.Server.Services
                     .Select(h => (DateTime?)h.CreatedAt)
                     .FirstOrDefaultAsync();
 
-                    DateTime effectiveDate = lastChangeDate ?? user.CreatedAt ?? DateTime.MinValue;
+                    DateTime effectiveDate = lastChangeDate ?? DateTime.MinValue;
 
                     // CASE: Failure - Password change overdue
                     if (effectiveDate.AddDays(AuthDefaults.Staff.MaxPasswordAgeDays) < DateTime.UtcNow)
@@ -148,7 +163,8 @@ namespace PassengerManager.Server.Services
                         {
                             Success = false,
                             Message = "Password expired",
-                            Code = AuthResultCode.CredentialOverdue
+                            Code = AuthResultCode.CredentialOverdue,
+                            Token = _tokenService.GenerateIdToken(user)
                         };
                     }
 
@@ -207,6 +223,7 @@ namespace PassengerManager.Server.Services
             }
         }
 
+        [AllowAnonymous]
         public override async Task<DriverLoginResponse> DriverLogin(DriverLoginRequest request, ServerCallContext context)
         {
             _context.ChangeTracker.Clear();
@@ -329,7 +346,7 @@ namespace PassengerManager.Server.Services
                                 .Select(h => (DateTime?)h.CreatedAt)
                                 .FirstOrDefaultAsync();
 
-                            DateTime effectiveDate = lastChangeDate ?? user.CreatedAt ?? DateTime.MinValue;
+                            DateTime effectiveDate = lastChangeDate ?? DateTime.MinValue;
 
                             // CASE: Failure - Password change overdue
                             if (effectiveDate.AddDays(AuthDefaults.Terminal.MaxPasswordAgeDays) < DateTime.UtcNow)
@@ -339,7 +356,8 @@ namespace PassengerManager.Server.Services
                                 {
                                     Success = false,
                                     Message = "Password expired",
-                                    Code = AuthResultCode.CredentialOverdue
+                                    Code = AuthResultCode.CredentialOverdue,
+                                    Token = _tokenService.GenerateIdToken(user)
                                 };
                             }
 
@@ -436,6 +454,7 @@ namespace PassengerManager.Server.Services
             }
         }
 
+        [Authorize]
         public override async Task<PasswordChangeResponse> PasswordChange(PasswordChangeRequest request, ServerCallContext context)
         {
             _context.ChangeTracker.Clear();
@@ -583,6 +602,7 @@ namespace PassengerManager.Server.Services
             }
         }
 
+        [Authorize]
         public override async Task<PasswordResetResponse> PasswordReset(PasswordResetRequest request, ServerCallContext context)
         {
             _context.ChangeTracker.Clear();

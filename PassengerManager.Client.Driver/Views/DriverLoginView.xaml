@@ -4,6 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:PassengerManager.Client.Driver.Views"
+             xmlns:coreRes="clr-namespace:PassengerManager.Client.Core.Resources;assembly=PassengerManager.Client.Core"
+             xmlns:driverRes="clr-namespace:PassengerManager.Client.Driver.Resources;assembly=PassengerManager.Client.Driver"
              mc:Ignorable="d" 
              Foreground="White"
              FontSize="24"
@@ -21,18 +23,7 @@
 
         <!--- Info box -->
         <Grid Grid.Row="0">
-            <TextBlock FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#AAAAAA" Margin="0,0,0,10">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Setter Property="Text" Value="Enter Driver ID"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsEnteringPin}" Value="True">
-                                <Setter Property="Text" Value="Enter PIN"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
+            <TextBlock Text="{Binding PromptText}" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#AAAAAA" Margin="0,0,0,10"/>
 
             <Border Background="#CC0000" CornerRadius="8" Padding="15" Margin="0,10"
                     Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
@@ -80,7 +71,7 @@
         </ItemsControl>
 
         <!--- Numpad -->
-        <Grid Grid.Row="2" Margin="0,20,0,0">
+        <Grid Grid.Row="2" Margin="0,20,0,0" IsEnabled="{Binding IsNumpadEnabled}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>

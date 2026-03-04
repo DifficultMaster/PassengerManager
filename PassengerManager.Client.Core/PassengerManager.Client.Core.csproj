@@ -24,12 +24,21 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>AuthErrors.resx</DependentUpon>
     </Compile>
+    <Compile Update="Resources\CommonUIStrings.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>CommonUIStrings.resx</DependentUpon>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Update="Resources\AuthErrors.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>AuthErrors.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Update="Resources\CommonUIStrings.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>CommonUIStrings.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
 

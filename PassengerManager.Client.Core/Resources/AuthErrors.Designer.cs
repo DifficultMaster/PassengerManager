@@ -106,6 +106,15 @@ namespace PassengerManager.Client.Core.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to PIN or Password is not matching.
+        /// </summary>
+        public static string InvalidNewPassword {
+            get {
+                return ResourceManager.GetString("InvalidNewPassword", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Incorrect PIN or Password.
         /// </summary>
         public static string InvalidPassword {
@@ -156,6 +165,15 @@ namespace PassengerManager.Client.Core.Resources {
         public static string InvalidVehicle {
             get {
                 return ResourceManager.GetString("InvalidVehicle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Network error. Cannot reach the server.
+        /// </summary>
+        public static string Network {
+            get {
+                return ResourceManager.GetString("Network", resourceCulture);
             }
         }
         

@@ -117,49 +117,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="AccountLockout" xml:space="preserve">
-    <value>Too many attempts. Please, try again later</value>
+  <data name="PromptConfirmNewPin" xml:space="preserve">
+    <value>Repeat new PIN</value>
   </data>
-  <data name="CredentialOverdue" xml:space="preserve">
-    <value>PIN or Password is too old. Please, update credentials</value>
+  <data name="PromptEnterId" xml:space="preserve">
+    <value>Enter Driver ID</value>
   </data>
-  <data name="InvalidLogin" xml:space="preserve">
-    <value>Incorrect login ID</value>
+  <data name="PromptEnterNewPin" xml:space="preserve">
+    <value>Enter new PIN</value>
   </data>
-  <data name="InvalidLoginFormat" xml:space="preserve">
-    <value>Incorrect login ID</value>
-  </data>
-  <data name="InvalidMode" xml:space="preserve">
-    <value>You must log into a different app. Please, contact maintenance</value>
-  </data>
-  <data name="InvalidNewPassword" xml:space="preserve">
-    <value>PIN or Password is not matching</value>
-  </data>
-  <data name="InvalidPassword" xml:space="preserve">
-    <value>Incorrect PIN or Password</value>
-  </data>
-  <data name="InvalidPasswordFormat" xml:space="preserve">
-    <value>Incorrect PIN or Password</value>
-  </data>
-  <data name="InvalidPasswordHistory" xml:space="preserve">
-    <value>Password must not be repeating</value>
-  </data>
-  <data name="InvalidRole" xml:space="preserve">
-    <value>You can not edit this user, as they have the same or higher access level</value>
-  </data>
-  <data name="InvalidTarget" xml:space="preserve">
-    <value>Incorrect target ID</value>
-  </data>
-  <data name="InvalidVehicle" xml:space="preserve">
-    <value>Incorrect vehicle ID. Please, contact maintenance</value>
-  </data>
-  <data name="Network" xml:space="preserve">
-    <value>Network error. Cannot reach the server</value>
-  </data>
-  <data name="Unauthorized" xml:space="preserve">
-    <value>Access denied</value>
-  </data>
-  <data name="Unknown" xml:space="preserve">
-    <value>Internal error. Please, try again later</value>
+  <data name="PromptEnterPin" xml:space="preserve">
+    <value>Enter PIN</value>
   </data>
 </root>

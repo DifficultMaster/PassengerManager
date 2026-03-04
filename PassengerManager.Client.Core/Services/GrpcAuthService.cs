@@ -41,5 +41,36 @@ namespace PassengerManager.Client.Core.Services
                 };
             }
         }
+
+        public async Task<PasswordChangeResponse> ChangeDriverPasswordAsync(PasswordChangeRequest request, string tempToken)
+        {
+            try
+            {
+                Metadata headers = new Metadata();
+
+                if (!string.IsNullOrWhiteSpace(tempToken))
+                    headers.Add("Authorization", $"Bearer {tempToken}");
+
+                return await _client.PasswordChangeAsync(request, headers: headers);
+            }
+            catch (RpcException ex)
+            {
+                return new PasswordChangeResponse
+                {
+                    Success = false,
+                    Message = $"Network error: {ex.Status.Detail}",
+                    Code = AuthResultCode.Unknown
+                };
+            }
+            catch
+            {
+                return new PasswordChangeResponse
+                {
+                    Success = false,
+                    Message = $"Unhandled local exception",
+                    Code = AuthResultCode.Unknown
+                };
+            }
+        }
     }
 }

@@ -118,48 +118,48 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="AccountLockout" xml:space="preserve">
-    <value>Too many attempts. Please, try again later</value>
+    <value>Забагато невдалих спроб. Будь ласка, спробуйте знову пізніше</value>
   </data>
   <data name="CredentialOverdue" xml:space="preserve">
-    <value>PIN or Password is too old. Please, update credentials</value>
+    <value>ПІН або пароль застарілий. Будь ласка, оновіть його</value>
   </data>
   <data name="InvalidLogin" xml:space="preserve">
-    <value>Incorrect login ID</value>
+    <value>Невірний логін</value>
   </data>
   <data name="InvalidLoginFormat" xml:space="preserve">
-    <value>Incorrect login ID</value>
+    <value>Невірний логін</value>
   </data>
   <data name="InvalidMode" xml:space="preserve">
-    <value>You must log into a different app. Please, contact maintenance</value>
+    <value>Ви маєте користуватися іншим додатком. Будь ласка, зверніться до персоналу обслуговування</value>
   </data>
   <data name="InvalidNewPassword" xml:space="preserve">
-    <value>PIN or Password is not matching</value>
+    <value>ПІН або пароль не співпадає</value>
   </data>
   <data name="InvalidPassword" xml:space="preserve">
-    <value>Incorrect PIN or Password</value>
+    <value>Невірний ПІН або пароль</value>
   </data>
   <data name="InvalidPasswordFormat" xml:space="preserve">
-    <value>Incorrect PIN or Password</value>
+    <value>Невірний ПІН або пароль</value>
   </data>
   <data name="InvalidPasswordHistory" xml:space="preserve">
-    <value>Password must not be repeating</value>
+    <value>Пароль не має повторюватися</value>
   </data>
   <data name="InvalidRole" xml:space="preserve">
-    <value>You can not edit this user, as they have the same or higher access level</value>
+    <value>Ви не можете змінити дані цього користувача, адже вони мають однаковий або вищий рівень доступу</value>
   </data>
   <data name="InvalidTarget" xml:space="preserve">
-    <value>Incorrect target ID</value>
+    <value>Невірний цільовий ідентифікатор</value>
   </data>
   <data name="InvalidVehicle" xml:space="preserve">
-    <value>Incorrect vehicle ID. Please, contact maintenance</value>
+    <value>Невірний ідентифікатор транспортного засобу. Будь ласка, зверніться до персоналу обслуговування</value>
   </data>
   <data name="Network" xml:space="preserve">
-    <value>Network error. Cannot reach the server</value>
+    <value>Помилка мережі. Неможливо звернутися до сервера</value>
   </data>
   <data name="Unauthorized" xml:space="preserve">
-    <value>Access denied</value>
+    <value>Доступ заборонено</value>
   </data>
   <data name="Unknown" xml:space="preserve">
-    <value>Internal error. Please, try again later</value>
+    <value>Внутрішня помилка. Будь ласка, спробуйте знову пізніше</value>
   </data>
 </root>

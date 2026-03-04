@@ -9,5 +9,7 @@ namespace PassengerManager.Client.Core.Services.Interfaces
     public interface IAuthService
     {
         Task<DriverLoginResponse> AuthenticateDriverAsync(DriverLoginRequest request);
+
+        Task<PasswordChangeResponse> ChangeDriverPasswordAsync(PasswordChangeRequest request, string tempToken);
     }
 }

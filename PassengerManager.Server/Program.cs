@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using PassengerManager.Server.Hubs;
 using PassengerManager.Server.Services;
 using PassengerManager.Server.Services.Background;
@@ -12,6 +13,7 @@ using System.Net;
 using System.Text;
 using PassengerManager.Server.Models;
 using System.Runtime.CompilerServices;
+using Microsoft.IdentityModel.Tokens;
 
 namespace PassengerManager.Server
 {
@@ -52,7 +54,7 @@ namespace PassengerManager.Server
                         {
                             Username = "driver_user",
                             FullName = "Driver",
-                            PasswordHash = PasswordHandler.GetHashedPassword("driver_user"),
+                            PasswordHash = PasswordHandler.GetHashedPassword("01234567"),
                             RoleId = 3,
                             CreatedAt = DateTime.UtcNow
                         }
@@ -95,6 +97,26 @@ namespace PassengerManager.Server
                 AutomaticDecompression = System.Net.DecompressionMethods.All,
                 PooledConnectionLifetime = TimeSpan.FromMinutes(builder.Configuration.GetValue<int>("HttpSettings:GtfsClient:DnsRefreshMinutes", 5)),
                 UseProxy = false
+            });
+
+            // Add JWT Token handling
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+                    ValidAudience = builder.Configuration["JwtSettings:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"]!))
+                };
             });
 
             builder.Services.AddSignalR();
@@ -157,6 +179,7 @@ namespace PassengerManager.Server
                     app.MapGrpcReflectionService();
                 }
 
+                app.UseAuthentication();
                 app.UseAuthorization();
                 app.MapControllers();
 

@@ -22,7 +22,7 @@ namespace PassengerManager.Server.Services.Security
         {
             _configuration = configuration;
             _key = new SymmetricSecurityKey(System.Text.Encoding.UTF8
-                .GetBytes(_configuration["JwtSettings:SecretKey"] ?? throw new InvalidOperationException("JWT secret key is not configured.")));
+                .GetBytes(_configuration["JwtSettings:Key"] ?? throw new InvalidOperationException("JWT secret key is not configured.")));
         }
 
         private string CreateToken(List<Claim> claims, double expiryMinutes)

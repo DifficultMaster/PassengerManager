@@ -1,16 +1,25 @@
+version: '3.8'
+
 services:
   db:
     image: postgres:17
     container_name: passenger_manager_db
     restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+    env_file:
+      - .env
     ports:
       - "5433:5432"
     volumes:
       - "postgres_data:/var/lib/postgresql/data" 
+
+  redis:
+    image: redis:7-alpine
+    container_name: passenger_manager_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --save "" --appendonly no
+    
   server:
     build:
       context: .
@@ -19,12 +28,13 @@ services:
     restart: always
     depends_on:
       - db
+      - redis
     ports:
-      - "${APP_PORT}:8080"
+      - "${APP_PORT:-8080}:8080"
     environment:
       - ConnectionStrings__DefaultConnection=Host=db;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_HTTP_PORTS=8080
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false
+      - ASPNETCORE_ENVIRONMENT=Production
 
 volumes:
   postgres_data:

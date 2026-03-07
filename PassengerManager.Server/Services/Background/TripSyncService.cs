@@ -3,156 +3,110 @@ using Microsoft.EntityFrameworkCore;
 using PassengerManager.Server.Models;
 using PassengerManager.Server.Protos.Static;
 using PassengerManager.Server.Services.Static;
+using PassengerManager.Shared.DTOs;
 using PassengerManager.Shared.Models;
+using StackExchange.Redis;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json;
 
 namespace PassengerManager.Server.Services.Background
 {
     public class TripSyncService : BackgroundService
     {
-        private readonly IServiceProvider _serviceProvider;
         private readonly IConfiguration _configuration;
+        private readonly GtfsScaleSettings _scaleSettings;
         private readonly ILogger<TripSyncService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConnectionMultiplexer _redis;
+        private readonly TelemetryChannels _channels;
 
         private DateTimeOffset? _lastUpdated = null;
         private EntityTagHeaderValue? _lastEntityTag = null;
 
         public TripSyncService(
-            IServiceProvider serviceProvider, 
-            IConfiguration configuration, 
+            IConfiguration configuration,
+            GtfsScaleSettings scaleSettings, 
             ILogger<TripSyncService> logger, 
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            IConnectionMultiplexer redis,
+            TelemetryChannels channels)
         {
-            _serviceProvider = serviceProvider;
             _configuration = configuration;
+            _scaleSettings = scaleSettings;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
+            _redis = redis;
+            _channels = channels;
         }
 
-        private async Task ProcessTripUpdates(FeedMessage feed, Models.PassengerManagerContext context)
+        private async Task ProcessTripUpdatesAsync(FeedMessage feed, CancellationToken token)
         {
             List<FeedEntity> entities = feed.Entity.Where(e => e.TripUpdate != null).ToList();
             if (!entities.Any()) return;
 
-            List<Shared.Models.TripUpdate> newTripUpdates = new List<Shared.Models.TripUpdate>();
             DateTime now = DateTime.UtcNow;
+            StackExchange.Redis.IDatabase db = _redis.GetDatabase();
 
             foreach (FeedEntity entity in entities)
             {
                 Protos.Static.TripUpdate gtfsTripUpdate = entity.TripUpdate;
+
                 if (gtfsTripUpdate.Trip == null || string.IsNullOrEmpty(gtfsTripUpdate.Trip.TripId))
                     continue;
 
-                string tripId = gtfsTripUpdate.Trip.TripId;
-                string? vehicleId = gtfsTripUpdate.Vehicle?.Id;
-
-                DateTime? timestamp = gtfsTripUpdate.HasTimestamp
-                    ? DateTimeOffset.FromUnixTimeSeconds((long)gtfsTripUpdate.Timestamp).UtcDateTime
-                    : now;
-
                 int? delaySeconds = gtfsTripUpdate.HasDelay
                     ? gtfsTripUpdate.Delay
-                    : gtfsTripUpdate.StopTimeUpdate
-                        .LastOrDefault(s => s.Arrival != null && s.Arrival.HasDelay)?.Arrival?.Delay
-                      ?? gtfsTripUpdate.StopTimeUpdate
-                        .LastOrDefault(s => s.Departure != null && s.Departure.HasDelay)?.Departure?.Delay;
+                    : gtfsTripUpdate.StopTimeUpdate.LastOrDefault(s => s.Arrival != null && s.Arrival.HasDelay)?.Arrival?.Delay
+                      ?? gtfsTripUpdate.StopTimeUpdate.LastOrDefault(s => s.Departure != null && s.Departure.HasDelay)?.Departure?.Delay;
 
-                newTripUpdates.Add(new Shared.Models.TripUpdate
+                TripUpdateDto dto = new TripUpdateDto
                 {
-                    TripId = tripId,
-                    VehicleId = string.IsNullOrEmpty(vehicleId) ? null : vehicleId,
-                    Timestamp = timestamp,
+                    TripId = gtfsTripUpdate.Trip.TripId,
+                    VehicleId = string.IsNullOrEmpty(gtfsTripUpdate.Vehicle?.Id) ? null : gtfsTripUpdate.Vehicle.Id,
+                    Timestamp = gtfsTripUpdate.HasTimestamp ? DateTimeOffset.FromUnixTimeSeconds((long)gtfsTripUpdate.Timestamp).UtcDateTime : now,
                     DelaySeconds = delaySeconds
-                });
-            }
+                };
 
-            if (!newTripUpdates.Any()) return;
-
-            HashSet<string> existingTripIds = (await context.Trips
-                .Select(t => t.TripId)
-                .ToListAsync())
-                .ToHashSet();
-
-            HashSet<string> existingVehicleIds = (await context.Vehicles
-                .Select(v => v.VehicleId)
-                .ToListAsync())
-                .ToHashSet();
-
-            newTripUpdates = newTripUpdates
-                .Where(tu =>
-                    (tu.TripId == null || existingTripIds.Contains(tu.TripId)) &&
-                    (tu.VehicleId == null || existingVehicleIds.Contains(tu.VehicleId)))
-                .ToList();
-
-            if (!newTripUpdates.Any()) return;
-
-            bool autoDetectChanges = context.ChangeTracker.AutoDetectChangesEnabled;
-            context.ChangeTracker.AutoDetectChangesEnabled = false;
-
-            try
-            {
-                await context.TripUpdates.AddRangeAsync(newTripUpdates);
-                await context.SaveChangesAsync();
-            }
-            finally
-            {
-                context.ChangeTracker.AutoDetectChangesEnabled = autoDetectChanges;
-                context.ChangeTracker.Clear();
+                try
+                {
+                    string json = JsonSerializer.Serialize(dto);
+                    await db.StringSetAsync($"trip:{dto.TripId}", json, TimeSpan.FromSeconds(_scaleSettings.RedisTtlSeconds), flags: CommandFlags.FireAndForget);
+                }
+                catch (RedisConnectionException) { }
+                
+                await _channels.TripChannel.Writer.WriteAsync(dto, token);
             }
         }
 
-        private async Task ProcessAlerts(FeedMessage feed, Models.PassengerManagerContext context)
+        private async Task ProcessAlertsAsync(FeedMessage feed, CancellationToken token)
         {
             List<FeedEntity> entities = feed.Entity.Where(e => e.Alert != null).ToList();
             if (!entities.Any()) return;
 
-            List<string> incomingAlertIds = entities
-                .Select(e => e.Id)
-                .Where(id => !string.IsNullOrEmpty(id))
-                .Distinct()
-                .ToList();
-
-            HashSet<string> existingAlertIds = (await context.ServiceAlerts
-                .Where(a => incomingAlertIds.Contains(a.AlertId))
-                .Select(a => a.AlertId)
-                .ToListAsync())
-                .ToHashSet();
-
-            List<Shared.Models.ServiceAlert> newAlerts = new List<Shared.Models.ServiceAlert>();
-            List<Shared.Models.ServiceAlert> updatedAlerts = new List<Shared.Models.ServiceAlert>();
+            StackExchange.Redis.IDatabase db = _redis.GetDatabase();
 
             foreach (FeedEntity entity in entities)
             {
                 Alert gtfsAlert = entity.Alert;
-                string alertId = entity.Id;
-                if (string.IsNullOrEmpty(alertId)) continue;
+                if (string.IsNullOrEmpty(entity.Id)) continue;
 
                 EntitySelector? informed = gtfsAlert.InformedEntity.FirstOrDefault();
-
-                string? headerText = gtfsAlert.HeaderText?.Translation.FirstOrDefault()?.Text;
-                string? descriptionText = gtfsAlert.DescriptionText?.Translation.FirstOrDefault()?.Text;
-
                 TimeRange? activePeriod = gtfsAlert.ActivePeriod.FirstOrDefault();
-                DateTime? startTime = activePeriod != null && activePeriod.HasStart
-                    ? DateTimeOffset.FromUnixTimeSeconds((long)activePeriod.Start).UtcDateTime
-                    : null;
-                DateTime? endTime = activePeriod != null && activePeriod.HasEnd
-                    ? DateTimeOffset.FromUnixTimeSeconds((long)activePeriod.End).UtcDateTime
-                    : null;
 
+                DateTime? startTime = activePeriod != null && activePeriod.HasStart ? DateTimeOffset.FromUnixTimeSeconds((long)activePeriod.Start).UtcDateTime : null;
+                DateTime? endTime = activePeriod != null && activePeriod.HasEnd ? DateTimeOffset.FromUnixTimeSeconds((long)activePeriod.End).UtcDateTime : null;
                 bool isActive = endTime == null || endTime > DateTime.UtcNow;
 
-                Shared.Models.ServiceAlert alert = new Shared.Models.ServiceAlert
+                ServiceAlertDto dto = new ServiceAlertDto
                 {
-                    AlertId = alertId,
+                    AlertId = entity.Id,
                     AgencyId = informed?.AgencyId,
                     RouteId = informed?.RouteId,
                     StopId = informed?.StopId,
-                    HeaderText = headerText,
-                    DescriptionText = descriptionText,
+                    HeaderText = gtfsAlert.HeaderText?.Translation.FirstOrDefault()?.Text,
+                    DescriptionText = gtfsAlert.DescriptionText?.Translation.FirstOrDefault()?.Text,
                     Cause = gtfsAlert.HasCause ? (int?)gtfsAlert.Cause : null,
                     Effect = gtfsAlert.HasEffect ? (int?)gtfsAlert.Effect : null,
                     StartTime = startTime,
@@ -160,68 +114,14 @@ namespace PassengerManager.Server.Services.Background
                     IsActive = isActive
                 };
 
-                if (existingAlertIds.Contains(alertId))
+                try
                 {
-                    updatedAlerts.Add(alert);
+                    string json = JsonSerializer.Serialize(dto);
+                    await db.StringSetAsync($"alert:{dto.AlertId}", json, TimeSpan.FromMinutes(5), flags: CommandFlags.FireAndForget);
                 }
-                else
-                {
-                    newAlerts.Add(alert);
-                }
-            }
-
-            if (!newAlerts.Any() && !updatedAlerts.Any()) return;
-
-            HashSet<string> existingAgencyIds = (await context.Agencies
-                .Select(a => a.AgencyId)
-                .ToListAsync())
-                .ToHashSet();
-
-            HashSet<string> existingRouteIds = (await context.Routes
-                .Select(r => r.RouteId)
-                .ToListAsync())
-                .ToHashSet();
-
-            HashSet<string> existingStopIds = (await context.Stops
-                .Select(s => s.StopId)
-                .ToListAsync())
-                .ToHashSet();
-
-            bool isFkValid(Shared.Models.ServiceAlert a) =>
-                (a.AgencyId == null || existingAgencyIds.Contains(a.AgencyId)) &&
-                (a.RouteId == null || existingRouteIds.Contains(a.RouteId)) &&
-                (a.StopId == null || existingStopIds.Contains(a.StopId));
-
-            newAlerts = newAlerts.Where(isFkValid).ToList();
-            updatedAlerts = updatedAlerts.Where(isFkValid).ToList();
-
-            if (!newAlerts.Any() && !updatedAlerts.Any()) return;
-
-            bool autoDetectChanges = context.ChangeTracker.AutoDetectChangesEnabled;
-            context.ChangeTracker.AutoDetectChangesEnabled = false;
-
-            try
-            {
-                if (newAlerts.Any())
-                {
-                    await context.ServiceAlerts.AddRangeAsync(newAlerts);
-                }
-
-                foreach (Shared.Models.ServiceAlert alert in updatedAlerts)
-                {
-                    Shared.Models.ServiceAlert? existing = await context.ServiceAlerts.FindAsync(alert.AlertId);
-                    if (existing != null)
-                    {
-                        context.Entry(existing).CurrentValues.SetValues(alert);
-                    }
-                }
-
-                await context.SaveChangesAsync();
-            }
-            finally
-            {
-                context.ChangeTracker.AutoDetectChangesEnabled = autoDetectChanges;
-                context.ChangeTracker.Clear();
+                catch (RedisConnectionException) { }
+                
+                await _channels.AlertChannel.Writer.WriteAsync(dto, token);
             }
         }
 
@@ -309,13 +209,10 @@ namespace PassengerManager.Server.Services.Background
                 return;
             }
 
-            using IServiceScope scope = _serviceProvider.CreateScope();
-            Models.PassengerManagerContext context = scope.ServiceProvider.GetRequiredService<Models.PassengerManagerContext>();
-
             try
             {
-                await ProcessTripUpdates(feed, context);
-                await ProcessAlerts(feed, context);
+                await ProcessTripUpdatesAsync(feed, token);
+                await ProcessAlertsAsync(feed, token);
             }
             catch (Exception ex)
             {

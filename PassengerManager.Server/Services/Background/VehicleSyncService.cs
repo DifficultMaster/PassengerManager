@@ -1,178 +1,93 @@
 ﻿using Google.Protobuf;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using PassengerManager.Server.Models;
 using PassengerManager.Server.Protos.Static;
 using PassengerManager.Server.Services.Static;
+using PassengerManager.Shared.DTOs;
 using PassengerManager.Shared.Models;
+using StackExchange.Redis;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json;
 
 namespace PassengerManager.Server.Services.Background
 {
     public class VehicleSyncService : BackgroundService
     {
-        private readonly IServiceProvider _serviceProvider;
         private readonly IConfiguration _configuration;
+        private readonly GtfsScaleSettings _scaleSettings;
         private readonly ILogger<VehicleSyncService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConnectionMultiplexer _redis;
+        private readonly TelemetryChannels _channels;
 
         private DateTimeOffset? _lastUpdated = null;
         private EntityTagHeaderValue? _lastEntityTag = null;
 
-        public VehicleSyncService(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<VehicleSyncService> logger, IHttpClientFactory httpClientFactory)
+        public VehicleSyncService(
+            IConfiguration configuration, 
+            GtfsScaleSettings scaleSettings,
+            ILogger<VehicleSyncService> logger, 
+            IHttpClientFactory httpClientFactory,
+            IConnectionMultiplexer redis,
+            TelemetryChannels channels)
         {
-            _serviceProvider = serviceProvider;
             _configuration = configuration;
+            _scaleSettings = scaleSettings;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
+            _redis = redis;
+            _channels = channels;
         }
 
-        private async Task ProcessFeed(FeedMessage feed, Models.PassengerManagerContext context)
+        private async Task ProcessFeedAsync(FeedMessage feed, CancellationToken token)
         {
             List<FeedEntity> entities = feed.Entity.Where(e => e.Vehicle != null).ToList();
             if (!entities.Any()) return;
 
-            List<string> incomingIds = entities
-                .Select(e => e.Vehicle.Vehicle.Id)
-                .Where(id => !string.IsNullOrEmpty(id))
-                .Distinct()
-                .ToList();
-
-            Dictionary<string, Shared.Models.Vehicle> existingVehicles = await context.Vehicles
-                .Where(v => incomingIds.Contains(v.VehicleId))
-                .ToDictionaryAsync(v => v.VehicleId);
-
-            List<Shared.Models.Vehicle> newVehicles = new List<Shared.Models.Vehicle>();
-            List<Shared.Models.Telemetry> newTelemetries = new List<Shared.Models.Telemetry>();
-
             DateTime now = DateTime.UtcNow;
+            StackExchange.Redis.IDatabase db = _redis.GetDatabase();
 
             foreach (FeedEntity entity in entities)
             {
-                VehiclePosition gtfsVehicle = entity.Vehicle;
-                if (gtfsVehicle.Vehicle == null || string.IsNullOrEmpty(gtfsVehicle.Vehicle.Id)) 
+                Protos.Static.VehiclePosition gtfsVehicle = entity.Vehicle;
+
+                if (gtfsVehicle.Vehicle == null || string.IsNullOrEmpty(gtfsVehicle.Vehicle.Id))
                     continue;
 
-                string vehicleId = gtfsVehicle.Vehicle.Id;
-                Shared.Models.Vehicle vehicle;
-
-                if (existingVehicles.TryGetValue(vehicleId, out Vehicle? existingVehicle))
+                VehiclePositionDto dto = new VehiclePositionDto
                 {
-                    vehicle = existingVehicle;
-                }
-                else
+                    VehicleId = gtfsVehicle.Vehicle.Id,
+                    LicensePlate = gtfsVehicle.Vehicle.HasLicensePlate ? gtfsVehicle.Vehicle.LicensePlate : null,
+                    RouteId = gtfsVehicle.Trip?.RouteId,
+                    TripId = gtfsVehicle.Trip?.TripId,
+
+                    Latitude = gtfsVehicle.Position?.Latitude ?? 0,
+                    Longitude = gtfsVehicle.Position?.Longitude ?? 0,
+
+                    Bearing = gtfsVehicle.Position?.HasBearing == true ? gtfsVehicle.Position.Bearing : null,
+                    Speed = gtfsVehicle.Position?.HasSpeed == true ? gtfsVehicle.Position.Speed : null,
+                    Odometer = gtfsVehicle.Position?.HasOdometer == true ? gtfsVehicle.Position.Odometer : null,
+
+                    CurrentStatus = gtfsVehicle.HasCurrentStatus ? (int)gtfsVehicle.CurrentStatus : null,
+                    StopId = string.IsNullOrWhiteSpace(gtfsVehicle.StopId) ? null : gtfsVehicle.StopId,
+                    CurrentStopSequence = gtfsVehicle.HasCurrentStopSequence ? (int)gtfsVehicle.CurrentStopSequence : null,
+                    CongestionLevel = gtfsVehicle.HasCongestionLevel ? (int)gtfsVehicle.CongestionLevel : null,
+                    OccupancyStatus = gtfsVehicle.HasOccupancyStatus ? (int)gtfsVehicle.OccupancyStatus : null,
+
+                    Timestamp = gtfsVehicle.HasTimestamp ? DateTimeOffset.FromUnixTimeSeconds((long)gtfsVehicle.Timestamp).UtcDateTime : now
+                };
+
+                try
                 {
-                    vehicle = new Shared.Models.Vehicle
-                    {
-                        VehicleId = vehicleId
-                    };
-
-                    newVehicles.Add(vehicle);
-                    existingVehicles[vehicleId] = vehicle;
+                    string json = JsonSerializer.Serialize(dto);
+                    await db.StringSetAsync($"vehicle:{dto.VehicleId}", json, TimeSpan.FromSeconds(_scaleSettings.RedisTtlSeconds), flags: CommandFlags.FireAndForget);
                 }
-
-                if (gtfsVehicle.Vehicle.HasLicensePlate)
-                    vehicle.LicensePlate = gtfsVehicle.Vehicle.LicensePlate;
-
-                if (gtfsVehicle.Position != null)
-                {
-                    DateTime telemetryTimestamp = gtfsVehicle.HasTimestamp
-                        ? DateTimeOffset.FromUnixTimeSeconds((long)gtfsVehicle.Timestamp).UtcDateTime
-                        : now;
-
-                    newTelemetries.Add(new Shared.Models.Telemetry
-                    {
-                        VehicleId = vehicleId,
-                        RouteId = gtfsVehicle.Trip?.RouteId,
-                        TripId = gtfsVehicle.Trip?.TripId,
-
-                        Latitude = gtfsVehicle.Position.Latitude,
-                        Longitude = gtfsVehicle.Position.Longitude,
-
-                        Bearing = gtfsVehicle.Position.HasBearing ? gtfsVehicle.Position.Bearing : null,
-                        Speed = gtfsVehicle.Position.HasSpeed ? gtfsVehicle.Position.Speed : null,
-                        Odometer = gtfsVehicle.Position.HasOdometer ? gtfsVehicle.Position.Odometer : null,
-                        CurrentStatus = gtfsVehicle.HasCurrentStatus ? (int?)gtfsVehicle.CurrentStatus : null,
-
-                        StopId = string.IsNullOrWhiteSpace(gtfsVehicle.StopId) ? null : gtfsVehicle.StopId,
-                        CurrentStopSequence = gtfsVehicle.HasCurrentStopSequence ? (int?)gtfsVehicle.CurrentStopSequence : null,
-                        CongestionLevel = gtfsVehicle.HasCongestionLevel ? (int?)gtfsVehicle.CongestionLevel : null,
-                        OccupancyStatus = gtfsVehicle.HasOccupancyStatus ? (int?)gtfsVehicle.OccupancyStatus : null,
-
-                        Timestamp = telemetryTimestamp
-                    });
-                }
-            }
-
-            if (!newVehicles.Any() && !newTelemetries.Any())
-            {
-                return;
-            }
-
-            Dictionary<string, string?> routeAgencyMap = await context.Routes
-                .Select(r => new { r.RouteId, r.AgencyId })
-                .ToDictionaryAsync(r => r.RouteId, r => r.AgencyId);
-
-            HashSet<string> existingRouteIds = routeAgencyMap.Keys.ToHashSet();
-
-            HashSet<string> existingTripIds = (await context.Trips
-                .Select(t => t.TripId)
-                .ToListAsync())
-                .ToHashSet();
-
-            newTelemetries = newTelemetries
-                .Where(t =>
-                    (t.RouteId == null || existingRouteIds.Contains(t.RouteId)) &&
-                    (t.TripId == null || existingTripIds.Contains(t.TripId)))
-                .ToList();
-
-            List<Shared.Models.Vehicle> vehiclesToUpdateAgency = new List<Shared.Models.Vehicle>();
-
-            foreach (KeyValuePair<string, Shared.Models.Vehicle> kvp in existingVehicles)
-            {
-                Shared.Models.Vehicle vehicle = kvp.Value;
-                if (!string.IsNullOrEmpty(vehicle.AgencyId)) continue;
-
-                Shared.Models.Telemetry? telemetry = newTelemetries.FirstOrDefault(t => t.VehicleId == vehicle.VehicleId && t.RouteId != null);
-                if (telemetry != null && routeAgencyMap.TryGetValue(telemetry.RouteId, out string? agencyId) && !string.IsNullOrEmpty(agencyId))
-                {
-                    vehicle.AgencyId = agencyId;
-                    vehiclesToUpdateAgency.Add(vehicle);
-                }
-            }
-
-            if (!newVehicles.Any() && !newTelemetries.Any() && !vehiclesToUpdateAgency.Any())
-            {
-                return;
-            }
-
-            bool autoDetectChanges = context.ChangeTracker.AutoDetectChangesEnabled;
-            context.ChangeTracker.AutoDetectChangesEnabled = false;
-
-            try
-            {
-                if (newVehicles.Any())
-                {
-                    await context.Vehicles.AddRangeAsync(newVehicles);
-                }
-
-                foreach (Shared.Models.Vehicle vehicle in vehiclesToUpdateAgency)
-                {
-                    context.Entry(vehicle).Property(v => v.AgencyId).IsModified = true;
-                }
-
-                if (newTelemetries.Any())
-                {
-                    await context.Telemetries.AddRangeAsync(newTelemetries);
-                }
-
-                await context.SaveChangesAsync();
-            }
-            finally
-            {
-                context.ChangeTracker.AutoDetectChangesEnabled = autoDetectChanges;
-                context.ChangeTracker.Clear();
+                catch (RedisConnectionException) { }
+                
+                await _channels.VehicleChannel.Writer.WriteAsync(dto, token);
             }
         }
 
@@ -260,12 +175,9 @@ namespace PassengerManager.Server.Services.Background
                 return;
             }
 
-            using IServiceScope scope = _serviceProvider.CreateScope();
-            Models.PassengerManagerContext context = scope.ServiceProvider.GetRequiredService<Models.PassengerManagerContext>();
-
             try
             {
-                await ProcessFeed(feed, context);
+                await ProcessFeedAsync(feed, token);
             }
             catch (Exception ex)
             {

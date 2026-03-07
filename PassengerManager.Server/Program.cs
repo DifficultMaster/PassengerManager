@@ -14,6 +14,8 @@ using System.Text;
 using PassengerManager.Server.Models;
 using System.Runtime.CompilerServices;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
+using PassengerManager.Shared.DTOs;
 
 namespace PassengerManager.Server
 {
@@ -122,9 +124,35 @@ namespace PassengerManager.Server
             builder.Services.AddSignalR();
             builder.Services.AddScoped<ITokenService, JwtTokenService>();
 
+            // Add Redis handling
+            GtfsScaleSettings defaultScaleSettings = (builder.Configuration.GetValue<string>("SystemProfile") ?? "Small").ToLower() switch
+            {
+                "large" => new GtfsScaleSettings(1_500_000, 10_000, 60, 30),
+                "medium" => new GtfsScaleSettings(500_000, 2_500, 60, 45),
+                _ => new GtfsScaleSettings(100_000, 500, 60, 60)
+            };
+            GtfsScaleSettings finalScaleSettings = new GtfsScaleSettings(
+                builder.Configuration.GetValue<int>("GtfsSettings:ChannelCapacity", defaultScaleSettings.ChannelCapacity),
+                builder.Configuration.GetValue<int>("GtfsSettings:ArchiverBatchSize", defaultScaleSettings.ArchiverBatchSize),
+                builder.Configuration.GetValue<int>("GtfsSettings:ArchiverMaxWaitSeconds", defaultScaleSettings.ArchiverMaxWaitSeconds),
+                builder.Configuration.GetValue<int>("GtfsSettings:RedisTtlSeconds", defaultScaleSettings.RedisTtlSeconds)
+                );
+            builder.Services.AddSingleton(finalScaleSettings);
+            builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
+                string baseConnection = configuration.GetConnectionString("Redis") ?? "localhost:6379";
+
+                ConfigurationOptions options = ConfigurationOptions.Parse(baseConnection);
+                options.AbortOnConnectFail = false;
+
+                return ConnectionMultiplexer.Connect(options);
+            });
+            builder.Services.AddSingleton<TelemetryChannels>();
             builder.Services.AddHostedService<StaticSyncService>();
             builder.Services.AddHostedService<VehicleSyncService>();
             builder.Services.AddHostedService<TripSyncService>();
+            builder.Services.AddHostedService<GtfsArchiveWorker>();
 
             // Configure Swagger UI
             builder.Services.AddControllers();

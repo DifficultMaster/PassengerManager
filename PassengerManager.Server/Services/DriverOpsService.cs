@@ -8,7 +8,9 @@ using PassengerManager.Server.Models;
 using PassengerManager.Server.Protos.Static;
 using PassengerManager.Server.Services.Interfaces;
 using PassengerManager.Shared.Protos;
+using StackExchange.Redis;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace PassengerManager.Server.Services
 {
@@ -18,16 +20,24 @@ namespace PassengerManager.Server.Services
         private readonly ILogger<DriverOpsService> _logger;
         private readonly PassengerManagerContext _context;
         private readonly INotificationService _notifier;
+        private readonly IConnectionMultiplexer _redis;
+        private readonly int _tripInfoRelevanceHours;
 
         public DriverOpsService(
             ILogger<DriverOpsService> logger, 
             PassengerManagerContext context,
-            INotificationService notifier)
+            INotificationService notifier,
+            IConnectionMultiplexer redis,
+            int tripInfoRelevanceHours = 12)
         {
             _logger = logger;
             _context = context;
             _notifier = notifier;
+            _redis = redis;
+            _tripInfoRelevanceHours = tripInfoRelevanceHours;
         }
+
+        private record CachedTripOption(string TripId, string Headsign, int DirectionId);
 
         private static int MapToGtfsCause(IncidentType type)
         {
@@ -52,7 +62,7 @@ namespace PassengerManager.Server.Services
                 IncidentType.Breakdown => 2,    // REDUCED_SERVICE
                 _ => 8                          // UNKNOWN_EFFECT
             };
-        }
+        }        
 
         public override async Task<SetShiftRouteResponse> SetShiftRoute(SetShiftRouteRequest request, ServerCallContext context)
         {
@@ -142,13 +152,6 @@ namespace PassengerManager.Server.Services
 
             try
             {
-                List<Shared.Models.Trip> distinctTrips = await _context.Trips
-                    .AsNoTracking()
-                    .Where(t => t.RouteId == request.RouteId)
-                    .GroupBy(t => new { t.Headsign, t.DirectionId })
-                    .Select(g => g.First())
-                    .ToListAsync();
-
                 GetRouteTripsResponse response = new GetRouteTripsResponse
                 {
                     Success = true,
@@ -156,6 +159,37 @@ namespace PassengerManager.Server.Services
                     Code = DriverOpsResultCode.Success
                 };
 
+                IDatabase db = _redis.GetDatabase();
+                string cacheKey = $"trips:route:{request.RouteId}";
+                RedisValue cachedData = await db.StringGetAsync(cacheKey);
+
+                if (cachedData.HasValue)
+                {
+                    var cachedOptions = JsonSerializer.Deserialize<List<CachedTripOption>>((string)cachedData!);
+                    if (cachedOptions != null)
+                    {
+                        foreach (CachedTripOption option in cachedOptions)
+                        {
+                            response.Options.Add(new RouteTripOption
+                            { 
+                                TripId = option.TripId,
+                                Headsign = option.Headsign,
+                                DirectionId = option.DirectionId
+                            });
+                        }
+
+                        return response;
+                    }
+                }
+
+                List<Shared.Models.Trip> distinctTrips = await _context.Trips
+                    .AsNoTracking()
+                    .Where(t => t.RouteId == request.RouteId)
+                    .GroupBy(t => new { t.Headsign, t.DirectionId })
+                    .Select(g => g.First())
+                    .ToListAsync();
+
+                List<CachedTripOption> cacheListToSave = new List<CachedTripOption>();
                 foreach (Shared.Models.Trip trip in distinctTrips)
                 {
                     response.Options.Add(new RouteTripOption
@@ -164,6 +198,19 @@ namespace PassengerManager.Server.Services
                         Headsign = trip.Headsign ?? "Unknown",
                         DirectionId = trip.DirectionId ?? 0
                     });
+
+                    cacheListToSave.Add(new CachedTripOption(
+                        trip.TripId,
+                        trip.Headsign ?? "Unknown",
+                        trip.DirectionId ?? 0
+                    ));
+
+                    try
+                    {
+                        await db.StringSetAsync(cacheKey, JsonSerializer.Serialize(cacheListToSave), 
+                            TimeSpan.FromHours(_tripInfoRelevanceHours), flags: CommandFlags.FireAndForget);
+                    }
+                    catch (RedisConnectionException) { }
                 }
 
                 return response;

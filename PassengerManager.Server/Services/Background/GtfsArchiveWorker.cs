@@ -87,6 +87,16 @@ namespace PassengerManager.Server.Services.Background
             PassengerManagerContext context = scope.ServiceProvider.GetRequiredService<PassengerManagerContext>();
 
             List<string> incomingVehicleIds = batch.Select(b => b.VehicleId).Distinct().ToList();
+            List<string> incomingRouteIds = batch
+                .Where(b => !string.IsNullOrWhiteSpace(b.RouteId))
+                .Select(b => b.RouteId!)
+                .Distinct()
+                .ToList();
+
+            HashSet<string> existingRouteIds = await context.Routes
+                .Where(r => incomingRouteIds.Contains(r.RouteId))
+                .Select(r => r.RouteId)
+                .ToHashSetAsync(token);
 
             Dictionary<string, Shared.Models.Vehicle> existingVehicles = await context.Vehicles
                 .Where(v => incomingVehicleIds.Contains(v.VehicleId))
@@ -122,7 +132,9 @@ namespace PassengerManager.Server.Services.Background
             List<Shared.Models.Telemetry> newTelemetries = batch.Select(dto => new PassengerManager.Shared.Models.Telemetry
             {
                 VehicleId = dto.VehicleId,
-                RouteId = dto.RouteId,
+                RouteId = !string.IsNullOrWhiteSpace(dto.RouteId) && existingRouteIds.Contains(dto.RouteId)
+                    ? dto.RouteId
+                    : null,
                 TripId = dto.TripId,
                 Latitude = dto.Latitude,
                 Longitude = dto.Longitude,

@@ -239,6 +239,49 @@ namespace PassengerManager.Client.Driver.ViewModels
         }
 
         [RelayCommand]
+        private async Task ClearDigitsAsync()
+        {
+            if (IsLoading || HasError) return;
+
+            ErrorMessage = string.Empty;
+
+            switch (CurrentState)
+            {
+                case DriverLoginState.EnteringId:
+                    {
+                        if (DriverId.Length > 0)
+                            DriverId = string.Empty;
+
+                        break;
+                    }
+
+                case DriverLoginState.EnteringPin:
+                    {
+                        if (Pin.Length > 0)
+                            Pin = string.Empty;
+
+                        break;
+                    }
+
+                case DriverLoginState.EnteringNewPin:
+                    {
+                        if (NewPin.Length > 0)
+                            NewPin = string.Empty;
+
+                        break;
+                    }
+
+                case DriverLoginState.ConfirmingNewPin:
+                    {
+                        if (ConfirmPin.Length > 0)
+                            ConfirmPin = string.Empty;
+
+                        break;
+                    }
+            }
+        }
+
+        [RelayCommand]
         private async Task RemoveDigitAsync()
         {
             if (IsLoading || HasError) return;
@@ -326,7 +369,7 @@ namespace PassengerManager.Client.Driver.ViewModels
                     _oldPin = Pin;
                     _tempToken = response.Token;
 
-                    ErrorMessage = _authErrorTranslator.Translate(response.Code);
+                    ErrorMessage = _authErrorTranslator.Translate(response.Code) + ".";
                     CurrentState = DriverLoginState.EnteringNewPin;
 
                     Pin = string.Empty;
@@ -335,7 +378,7 @@ namespace PassengerManager.Client.Driver.ViewModels
                 }
                 else
                 {
-                    ErrorMessage = _authErrorTranslator.Translate(response.Code);
+                    ErrorMessage = _authErrorTranslator.Translate(response.Code) + ".";
                     CurrentState = DriverLoginState.EnteringId;
 
                     DriverId = string.Empty;

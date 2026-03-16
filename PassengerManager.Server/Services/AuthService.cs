@@ -134,6 +134,14 @@ namespace PassengerManager.Server.Services
                     {
                         user.IsLockedOut = true;
                         user.LockoutEnd = DateTime.UtcNow.AddSeconds(AuthDefaults.Staff.LockoutDurationSeconds);
+
+                        double remaining = Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalSeconds);
+                        response = new StaffLoginResponse
+                        {
+                            Success = false,
+                            Message = $"Account is locked. Try again in {remaining} second(s)",
+                            Code = AuthResultCode.AccountLockout
+                        };
                     }
 
                     response = new StaffLoginResponse
@@ -328,6 +336,14 @@ namespace PassengerManager.Server.Services
                             {
                                 user.IsLockedOut = true;
                                 user.LockoutEnd = DateTime.UtcNow.AddSeconds(AuthDefaults.Staff.LockoutDurationSeconds);
+
+                                double remaining = Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalSeconds);
+                                response = new DriverLoginResponse
+                                {
+                                    Success = false,
+                                    Message = $"Account is locked. Try again in {remaining} second(s)",
+                                    Code = AuthResultCode.AccountLockout
+                                };
                             }
 
                             response = new DriverLoginResponse

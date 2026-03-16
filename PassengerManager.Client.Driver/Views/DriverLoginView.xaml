@@ -102,11 +102,17 @@
                 
                 <!-- ErrorGrid -->
                 <Border Grid.Row="0" Grid.RowSpan="2" Width="818" Height="196" CornerRadius="30" 
-                        HorizontalAlignment="Center" VerticalAlignment="Top"
+                        HorizontalAlignment="Center" VerticalAlignment="Top" BorderThickness="10"
                         Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
                     <Border.Background>
                         <SolidColorBrush Color="{StaticResource ColorRed}" Opacity="0.8"/>
                     </Border.Background>
+                    <Border.BorderBrush>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="{StaticResource ColorRed}" Offset="0.0"/>
+                            <GradientStop Color="{StaticResource ColorGray}" Offset="1.0"/>
+                        </LinearGradientBrush>
+                    </Border.BorderBrush>
                     <Grid>
                         <Button Content="✕" Style="{StaticResource CloseErrorButtonStyle}" Command="{Binding DismissErrorCommand}"
                                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,0,0"/>

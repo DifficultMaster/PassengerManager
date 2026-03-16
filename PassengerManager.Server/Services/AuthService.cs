@@ -103,11 +103,10 @@ namespace PassengerManager.Server.Services
                 else if (user.IsLockedOut == true && user.LockoutEnd > DateTime.UtcNow)
                 {
                     audit.UserId = user.Id;
-                    double remaining = Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalSeconds);
                     response = new StaffLoginResponse
                     {
                         Success = false,
-                        Message = $"Account is locked. Try again in {remaining} second(s)",
+                        Message = $"Account is locked",
                         Code = AuthResultCode.AccountLockout
                     };
                 }
@@ -135,11 +134,10 @@ namespace PassengerManager.Server.Services
                         user.IsLockedOut = true;
                         user.LockoutEnd = DateTime.UtcNow.AddSeconds(AuthDefaults.Staff.LockoutDurationSeconds);
 
-                        double remaining = Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalSeconds);
                         response = new StaffLoginResponse
                         {
                             Success = false,
-                            Message = $"Account is locked. Try again in {remaining} second(s)",
+                            Message = $"Account is locked",
                             Code = AuthResultCode.AccountLockout
                         };
                     }
@@ -307,11 +305,10 @@ namespace PassengerManager.Server.Services
                         // CASE: Failure - Account lockout
                         else if (user.IsLockedOut == true && user.LockoutEnd > DateTime.UtcNow)
                         {
-                            double remaining = Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalSeconds);
                             response = new DriverLoginResponse
                             {
                                 Success = false,
-                                Message = $"Account is locked. Try again in {remaining} second(s)",
+                                Message = $"Account is locked",
                                 Code = AuthResultCode.AccountLockout
                             };
                         }
@@ -337,11 +334,10 @@ namespace PassengerManager.Server.Services
                                 user.IsLockedOut = true;
                                 user.LockoutEnd = DateTime.UtcNow.AddSeconds(AuthDefaults.Staff.LockoutDurationSeconds);
 
-                                double remaining = Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalSeconds);
                                 response = new DriverLoginResponse
                                 {
                                     Success = false,
-                                    Message = $"Account is locked. Try again in {remaining} second(s)",
+                                    Message = $"Account is locked",
                                     Code = AuthResultCode.AccountLockout
                                 };
                             }

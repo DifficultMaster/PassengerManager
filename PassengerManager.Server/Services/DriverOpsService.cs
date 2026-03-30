@@ -44,11 +44,17 @@ namespace PassengerManager.Server.Services
             // GTFS spec: https://gtfs.org/realtime/reference/#enum-cause
             return type switch
             {
-                IncidentType.Traffic => 2,      // OTHER CAUSE
-                IncidentType.Accident => 6,     // ACCIDENT
-                IncidentType.Breakdown => 9,    // MAINTENANCE
-                IncidentType.Detour => 11,      // POLICE_ACTIVITY
-                IncidentType.Emergency => 12,   // MEDICAL_EMERGENCY                
+                IncidentType.Other => 2,      // OTHER_CAUSE
+                IncidentType.TechnicalProblem => 3, // TECHNICAL_PROBLEM
+                IncidentType.Strike => 4, // STRIKE
+                IncidentType.Demonstration => 5, // DEMONSTRATION
+                IncidentType.Accident => 6, // ACCIDENT
+                IncidentType.Holiday => 7, // HOLIDAY
+                IncidentType.Weather => 8, // WEATHER
+                IncidentType.Maintenance => 9, // MAINTENANCE
+                IncidentType.Construction => 10, // CONSTRUCTION
+                IncidentType.PoliceActivity => 11, // POLICE_ACTIVITY
+                IncidentType.MedicalEmergency => 12, // MEDICAL_EMERGENCY
                 _ => 1                          // UNKNOWN CAUSE
             };
         }
@@ -58,9 +64,7 @@ namespace PassengerManager.Server.Services
             // GTFS spec: https://gtfs.org/realtime/reference/#enum-effect
             return type switch
             {
-                IncidentType.Traffic => 3,      // SIGNIFICANT DELAYS      
-                IncidentType.Breakdown => 2,    // REDUCED_SERVICE
-                _ => 8                          // UNKNOWN_EFFECT
+                _ => 8                          // UNKNOWN EFFECT
             };
         }        
 

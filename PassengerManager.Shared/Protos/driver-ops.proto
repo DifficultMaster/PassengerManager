@@ -81,11 +81,16 @@ enum DriverOpsResultCode
 enum IncidentType
 {
 	OTHER = 0;
-	TRAFFIC = 1;
-	DETOUR = 2;
-	ACCIDENT = 3;
-	BREAKDOWN = 4;
-	EMERGENCY = 5;
+	TECHNICAL_PROBLEM = 1;
+	STRIKE = 2;
+	DEMONSTRATION = 3;
+	ACCIDENT = 4;
+	HOLIDAY = 5;
+	WEATHER = 6;
+	MAINTENANCE = 7;
+	CONSTRUCTION = 8;
+	POLICE_ACTIVITY = 9;
+	MEDICAL_EMERGENCY = 10;
 }
 
 message SetShiftRouteRequest

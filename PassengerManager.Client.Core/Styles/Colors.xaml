@@ -3,13 +3,16 @@
     <Color x:Key="ColorBlueDark">#0A4DA6</Color>
     <Color x:Key="ColorBlue">#0B7ABF</Color>
     <Color x:Key="ColorBlueLight">#63A5BF</Color>
-    <Color x:Key="ColorGray">#CEECF2</Color>
-    <Color x:Key="ColorRed">#F20505</Color>
-    <Color x:Key="ColorGreen">#0CA82E</Color>
+    <Color x:Key="ColorWhite">#FFFFFF</Color>
+    <Color x:Key="ColorGray">#CEECF2</Color>    
+    <Color x:Key="ColorRed">#EF4444</Color>
+    <Color x:Key="ColorGreen">#22C55E</Color>
 
     <SolidColorBrush x:Key="BrushBlueDark" Color="{StaticResource ColorBlueDark}"/>
     <SolidColorBrush x:Key="BrushBlue" Color="{StaticResource ColorBlue}"/>
     <SolidColorBrush x:Key="BrushBlueLight" Color="{StaticResource ColorBlueLight}"/>
+    <SolidColorBrush x:Key="BrushWhite" Color="{StaticResource ColorWhite}"/>
     <SolidColorBrush x:Key="BrushGray" Color="{StaticResource ColorGray}"/>
     <SolidColorBrush x:Key="BrushRed" Color="{StaticResource ColorRed}"/>
+    <SolidColorBrush x:Key="BrushGreen" Color="{StaticResource ColorGreen}"/>
 </ResourceDictionary>

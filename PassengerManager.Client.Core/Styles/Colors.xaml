@@ -5,6 +5,7 @@
     <Color x:Key="ColorBlueLight">#63A5BF</Color>
     <Color x:Key="ColorGray">#CEECF2</Color>
     <Color x:Key="ColorRed">#F20505</Color>
+    <Color x:Key="ColorGreen">#0CA82E</Color>
 
     <SolidColorBrush x:Key="BrushBlueDark" Color="{StaticResource ColorBlueDark}"/>
     <SolidColorBrush x:Key="BrushBlue" Color="{StaticResource ColorBlue}"/>

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using MassTransit;
 using PassengerManager.Server.Hubs;
 using PassengerManager.Server.Services;
 using PassengerManager.Server.Services.Background;
@@ -28,8 +29,16 @@ namespace PassengerManager.Server
             {
                 Models.PassengerManagerContext context = scope.ServiceProvider.GetRequiredService<Models.PassengerManagerContext>();
 
-                // This is not needed, migrations are used to update DB if necessary
-                // context.Database.EnsureCreated();
+                // Apply pending migrations to ensure all tables exist
+                try
+                {
+                    context.Database.Migrate();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error applying migrations: {ex.Message}");
+                    throw;
+                }
 
                 if (!context.Users.Any())
                 {
@@ -90,7 +99,7 @@ namespace PassengerManager.Server
             {
                 client.Timeout = TimeSpan.FromSeconds(builder.Configuration.GetValue<int>("HttpSettings:GtfsClient:TimeoutSeconds", 10));
                 client.DefaultRequestHeaders.ConnectionClose = true;
-                client.DefaultRequestHeaders.UserAgent.ParseAdd(builder.Configuration.GetValue<string>("HttpSettings:GtfsClient:UserAgent", "PassegnerManager/1.0"));
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(builder.Configuration.GetValue<string>("HttpSettings:GtfsClient:UserAgent", "PassengerManager/1.0"));
 
                 client.DefaultRequestVersion = HttpVersion.Version11;
                 client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
@@ -124,6 +133,20 @@ namespace PassengerManager.Server
 
             builder.Services.AddSignalR();
             builder.Services.AddScoped<ITokenService, JwtTokenService>();
+            
+            // Add MassTransit for event publishing with RabbitMQ
+            builder.Services.AddMassTransit(x =>
+            {
+                x.SetKebabCaseEndpointNameFormatter();
+                
+                x.UsingRabbitMq((context, cfg) =>
+                {
+                    string rabbitMqHost = builder.Configuration.GetConnectionString("RabbitMQ") ?? "localhost";
+                    cfg.Host(rabbitMqHost);
+                    cfg.ConfigureEndpoints(context);
+                });
+            });
+            
             builder.Services.AddScoped<IMessageService, MessageService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddSingleton<DispatcherStateTrackerService>();

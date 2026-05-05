@@ -14,11 +14,13 @@
 
     <!-- MainGrid -->
     <Grid Background="{StaticResource BrushBlueLight}">
+        <!-- Background image (commented out - resource not available)
         <Rectangle IsHitTestVisible="False">
             <Rectangle.Fill>
                 <ImageBrush ImageSource="/Resources/driverlogin_bckg.png" Stretch="UniformToFill" Opacity="0.2"/>
             </Rectangle.Fill>
         </Rectangle>
+        -->
 
         <Border HorizontalAlignment="Center" VerticalAlignment="Center" 
                 Width="1080" Height="900" 

@@ -3,6 +3,11 @@ using PassengerManager.Server.Services.Interfaces;
 
 namespace PassengerManager.Server.Services
 {
+    /// <summary>
+    /// Simple in-memory event publisher.
+    /// In a production system, this would be replaced with MassTransit, RabbitMQ, or similar.
+    /// For now, events are logged for observability.
+    /// </summary>
     public class MessageService : IMessageService
     {
         private readonly IPublishEndpoint _publisher;
@@ -20,6 +25,7 @@ namespace PassengerManager.Server.Services
             try
             {
                 await _publisher.Publish(message, cancellationToken);
+                _logger.LogInformation("Event published: {EventName}", eventName);
             }
             catch (Exception ex)
             {

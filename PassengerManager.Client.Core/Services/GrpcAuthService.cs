@@ -16,6 +16,32 @@ namespace PassengerManager.Client.Core.Services
             _client = client;
         }
 
+        public async Task<HardwareLoginResponse> AuthenticateHardwareAsync(HardwareLoginRequest request)
+        {
+            try
+            {
+                return await _client.HardwareLoginAsync(request);
+            }
+            catch (RpcException ex)
+            {
+                return new HardwareLoginResponse
+                {
+                    Success = false,
+                    Message = $"Network error: {ex.Status.Detail}",
+                    Code = AuthResultCode.Unknown
+                };
+            }
+            catch (Exception ex)
+            {
+                return new HardwareLoginResponse
+                {
+                    Success = false,
+                    Message = $"Unhandled local exception",
+                    Code = AuthResultCode.Unknown
+                };
+            }
+        }
+
         public async Task<DriverLoginResponse> AuthenticateDriverAsync(DriverLoginRequest request)
         {
             try

@@ -15,8 +15,24 @@
         </DataTemplate>
     </Window.Resources>    
     <Grid>
+        <!-- Main content area -->
         <ContentControl Content="{Binding CurrentViewModel}"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"/>
+        
+        <!-- Overlay panel with SOS button and other always-visible UI elements -->
+        <Canvas Panel.ZIndex="1000" IsHitTestVisible="True">
+            <!-- SOS Button in bottom-left corner -->
+            <Button Canvas.Left="20" Canvas.Bottom="20"
+                    Width="80" Height="60"
+                    Style="{StaticResource SosButtonStyle}"
+                    Command="{Binding EmergencySosCommand}"
+                    ToolTip="Press for Emergency SOS">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock Text="🚨" TextAlignment="Center" FontSize="20"/>
+                    <TextBlock Text="SOS" TextAlignment="Center" FontSize="11" Margin="0,2,0,0" Foreground="White"/>
+                </StackPanel>
+            </Button>
+        </Canvas>
     </Grid>
 </Window>

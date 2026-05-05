@@ -15,6 +15,8 @@ public partial class Vehicle
 
     public string Model { get; set; }
 
+    public string HardwareHash { get; set; } = "UNSET";
+
     public int? ManufactureYear { get; set; }
 
     public bool? IsActive { get; set; }

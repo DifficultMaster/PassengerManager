@@ -1,0 +1,56 @@
+﻿syntax = "proto3";
+
+import "google/api/annotations.proto";
+
+option csharp_namespace = "PassengerManager.Shared.Protos";
+
+package telemetry;
+
+service TelemetryService
+{
+	rpc SendHeartbeat (SendHeartbeatRequest) returns (SendHeartbeatResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/hardware/heartbeat"
+			body: "*"
+		};
+	}
+
+	rpc SendStatus (SendStatusRequest) returns (SendStatusResponse)
+	{
+		option (google.api.http) = 
+		{
+			post: "/v1/hardware/status"
+			body: "*"
+		};
+	}
+}
+
+message SendHeartbeatRequest
+{
+	double latitude = 1;
+	double longitude = 2;
+	double bearing = 3;
+	double odometer = 4;
+	double speed = 5;	
+	bool is_app_in_foreground = 6;
+}
+
+message SendHeartbeatResponse
+{
+	bool success = 1;
+}
+
+message SendStatusRequest
+{
+	int32 current_status = 1;
+	int32 current_stop_sequence = 2;
+	int32 congestion_level = 3;
+	int32 occupancy_status = 4;
+}
+
+message SendStatusResponse
+{
+	bool success = 1;
+}

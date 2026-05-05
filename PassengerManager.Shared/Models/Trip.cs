@@ -23,7 +23,5 @@ public partial class Trip
 
     public virtual ShapeHeader Shape { get; set; }
 
-    public virtual ICollection<Shift> Shifts { get; set; } = new List<Shift>();
-
     public virtual ICollection<TripUpdate> TripUpdates { get; set; } = new List<TripUpdate>();
 }

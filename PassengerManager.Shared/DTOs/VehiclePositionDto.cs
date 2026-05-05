@@ -4,7 +4,7 @@ using System.Text;
 
 namespace PassengerManager.Shared.DTOs
 {
-    public class VehiclePositionDto
+    public record VehiclePositionDto
     {
         public string VehicleId { get; set; } = string.Empty;
         public string? LicensePlate { get; set; }

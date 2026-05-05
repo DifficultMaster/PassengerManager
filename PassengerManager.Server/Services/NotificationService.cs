@@ -38,5 +38,36 @@ namespace PassengerManager.Server.Services
             await _driverHubContext.Clients.User(driverUserId)
                 .SendAsync("ReceiveServiceAlert", message, isUrgent);
         }
+
+        /// <summary>
+        /// Notify a specific dispatcher of an incoming call within their agency.
+        /// </summary>
+        public async Task NotifyDispatcherOfIncomingCall(string agencyId, string dispatcherId, string callId, string vehicleId, string callType)
+        {
+            string groupName = $"Agency_{agencyId}_Dispatchers";
+
+            await _dispatcherHubContext.Clients.User(dispatcherId)
+                .SendAsync("ReceiveIncomingCall", callId, vehicleId, callType);
+        }
+
+        /// <summary>
+        /// Notify dispatchers in an agency of an incoming emergency call.
+        /// </summary>
+        public async Task NotifyDispatchersOfEmergencyCall(string agencyId, string callId, string vehicleId)
+        {
+            string groupName = $"Agency_{agencyId}_Dispatchers";
+
+            await _dispatcherHubContext.Clients.Group(groupName)
+                .SendAsync("ReceiveEmergencyCall", callId, vehicleId);
+        }
+
+        /// <summary>
+        /// Notify a driver about the dispatcher assigned to their call.
+        /// </summary>
+        public async Task NotifyDriverOfAssignedDispatcher(string vehicleUserId, string assignedDispatcherId, string callId)
+        {
+            await _driverHubContext.Clients.User(vehicleUserId)
+                .SendAsync("DispatcherAssigned", assignedDispatcherId, callId);
+        }
     }
 }

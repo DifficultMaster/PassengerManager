@@ -246,21 +246,13 @@ public partial class PassengerManagerContext : DbContext
 
             entity.HasIndex(e => e.VehicleId, "idx_shifts_active").HasFilter("(end_time IS NULL)");
 
-            entity.HasIndex(e => e.RouteId, "idx_shifts_route");
-
             entity.HasIndex(e => e.UserId, "idx_shifts_user");
 
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.CurrentTripId)
-                .HasMaxLength(128)
-                .HasColumnName("current_trip_id");
             entity.Property(e => e.EndTime).HasColumnName("end_time");
             entity.Property(e => e.IsApproved)
                 .HasDefaultValue(true)
                 .HasColumnName("is_approved");
-            entity.Property(e => e.RouteId)
-                .HasMaxLength(128)
-                .HasColumnName("route_id");
             entity.Property(e => e.StartTime)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("start_time");
@@ -268,16 +260,6 @@ public partial class PassengerManagerContext : DbContext
             entity.Property(e => e.VehicleId)
                 .HasMaxLength(128)
                 .HasColumnName("vehicle_id");
-
-            entity.HasOne(d => d.CurrentTrip).WithMany(p => p.Shifts)
-                .HasForeignKey(d => d.CurrentTripId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_shifts_trip");
-
-            entity.HasOne(d => d.Route).WithMany(p => p.Shifts)
-                .HasForeignKey(d => d.RouteId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_shifts_route");
 
             entity.HasOne(d => d.User).WithMany(p => p.Shifts)
                 .HasForeignKey(d => d.UserId)
@@ -355,6 +337,8 @@ public partial class PassengerManagerContext : DbContext
             entity.Property(e => e.VehicleId)
                 .HasMaxLength(128)
                 .HasColumnName("vehicle_id");
+            entity.Property(e => e.DriverId)
+                .HasColumnName("driver_id");
 
             entity.HasOne(d => d.Route).WithMany(p => p.Telemetries)
                 .HasForeignKey(d => d.RouteId)
@@ -364,6 +348,10 @@ public partial class PassengerManagerContext : DbContext
                 .HasForeignKey(d => d.VehicleId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("telemetry_vehicle_id_fkey");
+
+            entity.HasOne(d => d.Driver).WithMany()
+                .HasForeignKey(d => d.DriverId)
+                .HasConstraintName("telemetry_driver_id_fkey");
         });
 
         modelBuilder.Entity<Transaction>(entity =>
@@ -553,6 +541,9 @@ public partial class PassengerManagerContext : DbContext
             entity.Property(e => e.AgencyId)
                 .HasMaxLength(128)
                 .HasColumnName("agency_id");
+            entity.Property(e => e.HardwareHash)
+                .HasDefaultValue("UNSET")
+                .HasColumnName("hardware_hash");
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");

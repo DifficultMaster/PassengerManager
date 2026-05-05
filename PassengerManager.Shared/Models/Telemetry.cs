@@ -15,6 +15,8 @@ public partial class Telemetry
 
     public string TripId { get; set; }
 
+    public int? DriverId { get; set; }
+
     public double Latitude { get; set; }
 
     public double Longitude { get; set; }
@@ -40,4 +42,6 @@ public partial class Telemetry
     public virtual Route Route { get; set; }
 
     public virtual Vehicle Vehicle { get; set; }
+
+    public virtual User Driver { get; set; }
 }

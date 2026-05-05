@@ -10,7 +10,9 @@ namespace PassengerManager.Server.Services.Security
     {
         string GenerateIdToken(Shared.Models.User user);
 
-        string GenerateDriverToken(Shared.Models.User user, long shiftId, string vehicleId);
+        string GenerateHardwareToken(string vehicleId, string? agencyId);
+
+        string GenerateDriverToken(Shared.Models.User user, long shiftId, string vehicleId, string? agencyId);
     }
 
     public class JwtTokenService : ITokenService
@@ -59,7 +61,20 @@ namespace PassengerManager.Server.Services.Security
             return CreateToken(claims, _configuration.GetValue<double>("JswSettings:GeneralExpiryMinutes"));
         }
 
-        public string GenerateDriverToken(Shared.Models.User user, long shiftId, string vehicleId)
+        public string GenerateHardwareToken(string vehicleId, string? agencyId)
+        {
+            List<Claim> claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, vehicleId),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.Role, "Hardware"),
+                new Claim("VehicleId", vehicleId),
+                new Claim("AgencyId", agencyId ?? string.Empty)
+            };
+            return CreateToken(claims, _configuration.GetValue<double>("JwtSettings:HardwareExpiryMinutes"));
+        }
+
+        public string GenerateDriverToken(Shared.Models.User user, long shiftId, string vehicleId, string? agencyId)
         {
             if (user.Role == null)
             {
@@ -74,7 +89,8 @@ namespace PassengerManager.Server.Services.Security
                 new Claim(ClaimTypes.Role, user.Role.RoleName),
                 new Claim("AccessLevel", user.Role.AccessLevel.ToString()),
                 new Claim("ShiftId", shiftId.ToString()),
-                new Claim("VehicleId", vehicleId)
+                new Claim("VehicleId", vehicleId),
+                new Claim("AgencyId", agencyId ?? string.Empty)
             };
             return CreateToken(claims, _configuration.GetValue<double>("JwtSettings:DriverExpiryMinutes"));
         }

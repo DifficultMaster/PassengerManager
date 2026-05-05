@@ -17,6 +17,15 @@ service AuthService
 		};
 	}
 
+	rpc HardwareLogin (HardwareLoginRequest) returns (HardwareLoginResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/auth/login/hardware"
+			body: "*"
+		};
+	};
+
 	rpc DriverLogin (DriverLoginRequest) returns (DriverLoginResponse)
 	{
 		option (google.api.http) =
@@ -81,6 +90,20 @@ message StaffLoginResponse
 	string default_window = 8;
 }
 
+message HardwareLoginRequest
+{
+	string vehicle_id = 1;
+	string hardware_hash = 2;
+}
+
+message HardwareLoginResponse
+{
+	bool success = 1;	
+	string message = 2;
+	AuthResultCode code = 3;
+	string token = 4;
+}
+
 message DriverLoginRequest
 {
 	string vehicle_id = 1;
@@ -96,7 +119,6 @@ message DriverLoginResponse
 	string token = 4;
 	int64 shift_id = 5;
 	string driver_name = 6;
-	repeated string available_routes = 7;
 }
 
 message PasswordChangeRequest

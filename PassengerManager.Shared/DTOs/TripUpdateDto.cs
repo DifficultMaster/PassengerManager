@@ -4,7 +4,7 @@ using System.Text;
 
 namespace PassengerManager.Shared.DTOs
 {
-    public class TripUpdateDto
+    public record TripUpdateDto
     {
         public string TripId { get; set; } = string.Empty;
         public string? VehicleId { get; set; }

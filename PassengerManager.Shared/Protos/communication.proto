@@ -1,0 +1,38 @@
+﻿syntax = "proto3";
+
+import "google/api/annotations.proto";
+
+option csharp_namespace = "PassengerManager.Shared.Protos";
+
+package telemetry;
+
+service CommunicationService
+{
+	rpc InitiateCall (InitiateCallRequest) returns (InitiateCallResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/call"
+			body: "*"
+		};
+	}
+}
+
+message InitiateCallRequest
+{
+	enum CallType
+	{
+		STANDARD = 0;
+		EMERGENCY = 1;
+	}
+
+	CallType call_type = 1;
+	string target_id = 2;
+}
+
+message InitiateCallResponse
+{
+	bool success = 1;
+	string message = 2;
+	string assigned_target_id = 3;
+}

@@ -27,5 +27,10 @@ namespace PassengerManager.Server.Extensions
         {
             return user.FindFirst("VehicleId")?.Value ?? string.Empty;
         }
+
+        public static string GetAgencyId(this ClaimsPrincipal user)
+        {
+            return user.FindFirst("AgencyId")?.Value ?? string.Empty;
+        }
     }
 }

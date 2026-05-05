@@ -10,15 +10,11 @@ namespace PassengerManager.Client.Core.Stores
     {
         public long CurrentShiftId { get; private set; }
 
-        public IReadOnlyList<string> AvailableRoutes { get; private set; } = new List<string>();
-
         public void Login(DriverLoginResponse response)
         {
             Token = response.Token;
             DisplayName = response.DriverName;
-
             CurrentShiftId = response.ShiftId;
-            AvailableRoutes = response.AvailableRoutes.ToList();
 
             InvokeStateChanged();
         }
@@ -26,7 +22,6 @@ namespace PassengerManager.Client.Core.Stores
         public override void Logout()
         {
             CurrentShiftId = 0;
-            AvailableRoutes = new List<string>();
             base.Logout();
         }
     }

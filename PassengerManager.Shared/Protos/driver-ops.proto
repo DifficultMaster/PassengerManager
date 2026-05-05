@@ -8,29 +8,11 @@ package driver;
 
 service DriverOpsService
 {
-	rpc SetShiftRoute (SetShiftRouteRequest) returns (SetShiftRouteResponse)
+	rpc GetManifest (GetManifestRequest) returns (GetManifestResponse)
 	{
 		option (google.api.http) =
 		{
-			post: "/v1/driver/shift/route"
-			body: "*"
-		};
-	}
-
-	rpc GetRouteTrips (GetRouteTripsRequest) returns (GetRouteTripsResponse)
-	{
-		option (google.api.http) =
-		{
-			get: "/v1/routes/{route_id}/trips"
-		};
-	}
-
-	rpc SetShiftTrip (SetShiftTripRequest) returns (SetShiftTripResponse)
-	{
-		option (google.api.http) =
-		{
-			post: "/v1/driver/shift/trip"
-			body: "*"
+			get: "/v1/driver/manifest"
 		};
 	}
 
@@ -39,15 +21,6 @@ service DriverOpsService
 		option (google.api.http) =
 		{
 			post: "/v1/driver/shift/end"
-			body: "*"
-		};
-	}
-
-	rpc SendHeartbeat (HeartbeatRequest) returns (HeartbeatResponse)
-	{
-		option (google.api.http) =
-		{
-			post: "/v1/driver/heartbeat"
 			body: "*"
 		};
 	}
@@ -93,48 +66,31 @@ enum IncidentType
 	MEDICAL_EMERGENCY = 10;
 }
 
-message SetShiftRouteRequest
+message GetManifestRequest
+{
+}
+
+message RouteOption
 {
 	string route_id = 1;
+	string short_name = 2;
+	string long_name = 3;
+	repeated TripOption trips = 4;
 }
 
-message SetShiftRouteResponse
-{
-	bool success = 1;
-	string message = 2;
-	DriverOpsResultCode code = 3;
-}
-
-message GetRouteTripsRequest
-{
-	string route_id = 1;
-}
-
-message RouteTripOption
+message TripOption
 {
 	string trip_id = 1;
 	string headsign = 2;
 	int32 direction_id = 3;
 }
 
-message GetRouteTripsResponse
+message GetManifestResponse
 {
 	bool success = 1;
 	string message = 2;
 	DriverOpsResultCode code = 3;
-	repeated RouteTripOption options = 4;
-}
-
-message SetShiftTripRequest
-{
-	string trip_id = 1;
-}
-
-message SetShiftTripResponse
-{
-	bool success = 1;
-	string message = 2;
-	DriverOpsResultCode code = 3;
+	repeated RouteOption routes = 4;
 }
 
 message EndShiftRequest
@@ -146,18 +102,6 @@ message EndShiftResponse
 	bool success = 1;
 	string message = 2;
 	DriverOpsResultCode code = 3;
-}
-
-message HeartbeatRequest
-{
-	double latitude = 1;
-	double longitude = 2;
-	bool is_app_in_foreground = 3;
-}
-
-message HeartbeatResponse
-{
-	bool success = 1;
 }
 
 message ReportIncidentRequest

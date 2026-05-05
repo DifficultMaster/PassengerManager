@@ -4,7 +4,7 @@ using System.Text;
 
 namespace PassengerManager.Shared.DTOs
 {
-    public class ServiceAlertDto
+    public record ServiceAlertDto
     {
         public string AlertId { get; set; } = string.Empty;
         public string? AgencyId { get; set; }

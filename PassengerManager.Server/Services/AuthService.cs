@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using PassengerManager.Server.Extensions;
 using PassengerManager.Server.Models;
+using PassengerManager.Server.Services.Events;
+using PassengerManager.Server.Services.Interfaces;
 using PassengerManager.Server.Services.Security;
 using PassengerManager.Server.Services.Static;
 using PassengerManager.Shared.Models;
@@ -20,12 +22,14 @@ namespace PassengerManager.Server.Services
         private readonly ILogger<AuthService> _logger;
         private readonly Models.PassengerManagerContext _context;
         private readonly ITokenService _tokenService;
+        private readonly IMessageService _messageService;
 
-        public AuthService(ILogger<AuthService> logger, Models.PassengerManagerContext context, ITokenService tokenService)
+        public AuthService(ILogger<AuthService> logger, Models.PassengerManagerContext context, ITokenService tokenService, IMessageService messageService)
         {
             _logger = logger;
             _context = context;
             _tokenService = tokenService;
+            _messageService = messageService;
         }
 
         private string GeneratePassword(User targetUser)
@@ -57,6 +61,14 @@ namespace PassengerManager.Server.Services
         {
             _context.ChangeTracker.Clear();
 
+            Shared.Models.User? user = null;
+            StaffLoginResponse response = new StaffLoginResponse
+            {
+                Success = false,
+                Message = "An error occurred during login. Please try again later",
+                Code = AuthResultCode.Unknown
+            };
+
             try
             {
                 Shared.Models.LoginAudit audit = new Shared.Models.LoginAudit
@@ -68,47 +80,36 @@ namespace PassengerManager.Server.Services
                     IsSuccess = false,
                 };
 
-                Shared.Models.User? user = await _context.Users
+                user = await _context.Users
                     .Include(u => u.Role)
                     .FirstOrDefaultAsync(u => u.Username == request.Username);
-
-                StaffLoginResponse response;
 
                 // CASE: Failure - Invalid User ID
                 if (user == null)
                 {
-                    response = new StaffLoginResponse
-                    {
-                        Success = false,
-                        Message = "Incorrect username",
-                        Code = AuthResultCode.InvalidLogin
-                    };
+                    response.Success = false;
+                    response.Message = "Incorrect username";
+                    response.Code = AuthResultCode.InvalidLogin;
                 }
 
                 // CASE: Failure - Wrong UI
                 else if (user.Role == null || user.Role.RoleName.Equals("Driver", StringComparison.OrdinalIgnoreCase))
                 {
                     audit.UserId = user.Id;
-                    response = new StaffLoginResponse
-                    {
-                        Success = false,
-                        Message = user.Role == null
-                            ? "User has no assigned role"
-                            : "Drivers must use terminal mode to log in",
-                        Code = AuthResultCode.InvalidMode
-                    };
+                    response.Success = false;
+                    response.Message = user.Role == null
+                        ? "User has no assigned role"
+                        : "Drivers must use terminal mode to log in";
+                    response.Code = AuthResultCode.InvalidMode;
                 }
 
                 // CASE: Failure - Account lockout
                 else if (user.IsLockedOut == true && user.LockoutEnd > DateTime.UtcNow)
                 {
                     audit.UserId = user.Id;
-                    response = new StaffLoginResponse
-                    {
-                        Success = false,
-                        Message = $"Account is locked",
-                        Code = AuthResultCode.AccountLockout
-                    };
+                    response.Success = false;
+                    response.Message = "Account is locked";
+                    response.Code = AuthResultCode.AccountLockout;
                 }
 
                 // CASE: Failure - Incorrect password
@@ -134,20 +135,14 @@ namespace PassengerManager.Server.Services
                         user.IsLockedOut = true;
                         user.LockoutEnd = DateTime.UtcNow.AddSeconds(AuthDefaults.Staff.LockoutDurationSeconds);
 
-                        response = new StaffLoginResponse
-                        {
-                            Success = false,
-                            Message = $"Account is locked",
-                            Code = AuthResultCode.AccountLockout
-                        };
+                        response.Success = false;
+                        response.Message = "Account is locked";
+                        response.Code = AuthResultCode.AccountLockout;
                     }
 
-                    response = new StaffLoginResponse
-                    {
-                        Success = false,
-                        Message = "Incorrect password",
-                        Code = AuthResultCode.InvalidPassword
-                    };
+                    response.Success = false;
+                    response.Message = "Incorrect password";
+                    response.Code = AuthResultCode.InvalidPassword;
                 }                      
                 
                 else
@@ -165,13 +160,10 @@ namespace PassengerManager.Server.Services
                     if (effectiveDate.AddDays(AuthDefaults.Staff.MaxPasswordAgeDays) < DateTime.UtcNow)
                     {
                         audit.UserId = user.Id;
-                        response = new StaffLoginResponse
-                        {
-                            Success = false,
-                            Message = "Password expired",
-                            Code = AuthResultCode.CredentialOverdue,
-                            Token = _tokenService.GenerateIdToken(user)
-                        };
+                        response.Success = false;
+                        response.Message = "Password expired";
+                        response.Code = AuthResultCode.CredentialOverdue;
+                        response.Token = _tokenService.GenerateIdToken(user);
                     }
 
                     // CASE: Success
@@ -184,17 +176,14 @@ namespace PassengerManager.Server.Services
                         user.LockoutEnd = null;
                         user.LastLogin = DateTime.UtcNow;
 
-                        response = new StaffLoginResponse
-                        {
-                            Success = true,
-                            Message = "Login successful",
-                            Token = _tokenService.GenerateIdToken(user),
-                            FullName = user.FullName ?? string.Empty,
-                            RoleName = user.Role.RoleName,
-                            AccessLevel = user.Role.AccessLevel,
-                            DefaultWindow = user.Role.DefaultWindow ?? string.Empty,
-                            Code = AuthResultCode.Success
-                        };
+                        response.Success = true;
+                        response.Message = "Login successful";
+                        response.Token = _tokenService.GenerateIdToken(user);
+                        response.FullName = user.FullName ?? string.Empty;
+                        response.RoleName = user.Role.RoleName;
+                        response.AccessLevel = user.Role.AccessLevel;
+                        response.DefaultWindow = user.Role.DefaultWindow ?? string.Empty;
+                        response.Code = AuthResultCode.Success;
                     }                    
                 }
 
@@ -220,19 +209,113 @@ namespace PassengerManager.Server.Services
             {
                 _logger.LogError(ex, "Error in AuthService during StaffLogin");
 
-                return new StaffLoginResponse
-                {
-                    Success = false,
-                    Message = "An error occurred during login. Please try again later",
-                    Code = AuthResultCode.Unknown
-                };
+                response.Success = false;
+                response.Message = "An error occurred during login. Please try again later";
+                response.Code = AuthResultCode.Unknown;
+                return response;
             }
+            finally
+            {
+                await _messageService.PublishSafeAsync(
+                    new AuthEvents.LoginAttempted(
+                        Channel: "staff",
+                        Login: request.Username,
+                        Success: response.Success,
+                        Code: response.Code.ToString(),
+                        OccurredAtUtc: DateTime.UtcNow,
+                        UserId: user?.Id,
+                        Role: user?.Role?.RoleName,
+                        FailureReason: response.Success ? null : response.Message),
+                    "Auth.LoginAttempted",
+                    context.CancellationToken);
+            }
+        }
+
+        [AllowAnonymous]
+        public override async Task<HardwareLoginResponse> HardwareLogin(HardwareLoginRequest request, ServerCallContext context)
+        {
+            _context.ChangeTracker.Clear();
+
+            HardwareLoginResponse response = new HardwareLoginResponse
+            {
+                Success = false,
+                Message = "An error occurred during login. Please try again later",
+                Code = AuthResultCode.Unknown
+            };
+
+            try
+            {
+                Shared.Models.Vehicle? vehicle = await _context.Vehicles.FindAsync(request.VehicleId);
+
+                // CASE: Failure - Vehicle does not exist or is marked as inactive
+                if (vehicle == null || (vehicle.IsActive != null && vehicle.IsActive == false))
+                {
+                    response.Success = false;
+                    response.Message = "Device unauthorized or suspended";
+                    response.Code = AuthResultCode.InvalidVehicle;                   
+                }
+
+                // CASE: Failure - Incorrect hash password
+                else if (!PasswordHandler.VerifyPassword(request.HardwareHash, vehicle.HardwareHash))
+                {
+                    response.Success = false;
+                    response.Message = "Invalid credentials";
+                    response.Code = AuthResultCode.InvalidPassword;
+                }
+
+                // CASE: Success
+                else
+                {
+                    response.Success = true;
+                    response.Message = "Login successful";
+                    response.Code = AuthResultCode.Success;
+                    response.Token = _tokenService.GenerateHardwareToken(vehicle.VehicleId, vehicle.AgencyId);
+                }                
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in AuthService during HardwareLogin");
+
+                response.Success = false;
+                response.Message = "An error occurred during login. Please try again later";
+                response.Code = AuthResultCode.Unknown;
+
+                return response;
+            }
+            finally
+            {
+                await _messageService.PublishSafeAsync(
+                   new AuthEvents.LoginAttempted(
+                       Channel: "hardware",
+                       Login: request.VehicleId,
+                       Success: response.Success,
+                       Code: response.Code.ToString(),
+                       OccurredAtUtc: DateTime.UtcNow,
+                       UserId: null,
+                       Role: null,
+                       VehicleId: request.VehicleId,
+                       ShiftId: null,
+                       FailureReason: response.Success ? null : response.Message),
+                   "Auth.LoginAttempted",
+                   context.CancellationToken);
+            }            
         }
 
         [AllowAnonymous]
         public override async Task<DriverLoginResponse> DriverLogin(DriverLoginRequest request, ServerCallContext context)
         {
             _context.ChangeTracker.Clear();
+
+            DriverLoginResponse response = new DriverLoginResponse
+            {
+                Success = false,
+                Message = "An error occurred during login. Please try again later",
+                Code = AuthResultCode.Unknown
+            };
+            Shared.Models.User? driverUser = null;
+            Shared.Models.Shift? newShift = null;
 
             try
             {
@@ -245,19 +328,12 @@ namespace PassengerManager.Server.Services
                     IsSuccess = false,
                 };
 
-                DriverLoginResponse response;
-                Shared.Models.Shift? newShift = null;
-                Shared.Models.User? driverUser = null;
-
                 // CASE: Failure - Invalid User ID format
                 if (!int.TryParse(request.UserId, out int driverId))
                 {
-                    response = new DriverLoginResponse
-                    {
-                        Success = false,
-                        Message = "Invalid driver ID format",
-                        Code = AuthResultCode.InvalidLoginFormat
-                    };
+                    response.Success = false;
+                    response.Message = "Invalid driver ID format";
+                    response.Code = AuthResultCode.InvalidLoginFormat;
                 }
                 else
                 {
@@ -268,24 +344,18 @@ namespace PassengerManager.Server.Services
                     // CASE: Failure - Invalid User ID
                     if (user == null)
                     {
-                        response = new DriverLoginResponse
-                        {
-                            Success = false,
-                            Message = $"Driver {request.UserId} not found",
-                            Code = AuthResultCode.InvalidLogin
-                        };
+                        response.Success = false;
+                        response.Message = $"Driver {request.UserId} not found";
+                        response.Code = AuthResultCode.InvalidLogin;
                     }
                     // CASE: Failure - Wrong UI
                     else if (user.Role == null || !user.Role.RoleName.Equals("Driver", StringComparison.OrdinalIgnoreCase))
                     {
-                        response = new DriverLoginResponse
-                        {
-                            Success = false,
-                            Message = user.Role == null
-                                ? "User has no assigned role"
-                                : "Staff must use desktop mode to log in",
-                            Code = AuthResultCode.InvalidMode
-                        };
+                        response.Success = false;
+                        response.Message = user.Role == null
+                            ? "User has no assigned role"
+                            : "Staff must use desktop mode to log in";
+                        response.Code = AuthResultCode.InvalidMode;
                     }
                     else
                     {
@@ -295,22 +365,24 @@ namespace PassengerManager.Server.Services
                         // CASE: Failure - Invalid Vehicle ID
                         if (vehicle == null)
                         {
-                            response = new DriverLoginResponse
-                            {
-                                Success = false,
-                                Message = $"Vehicle {request.VehicleId} not found",
-                                Code = AuthResultCode.InvalidVehicle
-                            };
+                            response.Success = false;
+                            response.Message = $"Vehicle {request.VehicleId} not found";
+                            response.Code = AuthResultCode.InvalidVehicle;
+                        }
+                        // CASE: Failure - Vehicle not provisioned for hardware fingerprint
+                        else if (string.IsNullOrWhiteSpace(vehicle.HardwareHash)
+                            || vehicle.HardwareHash.Equals("UNSET", StringComparison.OrdinalIgnoreCase))
+                        {
+                            response.Success = false;
+                            response.Message = $"Vehicle {request.VehicleId} is not provisioned";
+                            response.Code = AuthResultCode.InvalidVehicle;
                         }
                         // CASE: Failure - Account lockout
                         else if (user.IsLockedOut == true && user.LockoutEnd > DateTime.UtcNow)
                         {
-                            response = new DriverLoginResponse
-                            {
-                                Success = false,
-                                Message = $"Account is locked",
-                                Code = AuthResultCode.AccountLockout
-                            };
+                            response.Success = false;
+                            response.Message = "Account is locked";
+                            response.Code = AuthResultCode.AccountLockout;
                         }
                         // CASE: Failure - Incorrect PIN
                         else if (!PasswordHandler.VerifyPassword(request.Pin, user.PasswordHash))
@@ -334,20 +406,14 @@ namespace PassengerManager.Server.Services
                                 user.IsLockedOut = true;
                                 user.LockoutEnd = DateTime.UtcNow.AddSeconds(AuthDefaults.Staff.LockoutDurationSeconds);
 
-                                response = new DriverLoginResponse
-                                {
-                                    Success = false,
-                                    Message = $"Account is locked",
-                                    Code = AuthResultCode.AccountLockout
-                                };
+                                response.Success = false;
+                                response.Message = "Account is locked";
+                                response.Code = AuthResultCode.AccountLockout;
                             }
 
-                            response = new DriverLoginResponse
-                            {
-                                Success = false,
-                                Message = "Incorrect PIN",
-                                Code = AuthResultCode.InvalidPassword
-                            };
+                            response.Success = false;
+                            response.Message = "Incorrect PIN";
+                            response.Code = AuthResultCode.InvalidPassword;
                         }                        
                         else
                         {
@@ -364,13 +430,10 @@ namespace PassengerManager.Server.Services
                             if (effectiveDate.AddDays(AuthDefaults.Terminal.MaxPasswordAgeDays) < DateTime.UtcNow)
                             {
                                 audit.UserId = user.Id;
-                                response = new DriverLoginResponse
-                                {
-                                    Success = false,
-                                    Message = "Password expired",
-                                    Code = AuthResultCode.CredentialOverdue,
-                                    Token = _tokenService.GenerateIdToken(user)
-                                };
+                                response.Success = false;
+                                response.Message = "Password expired";
+                                response.Code = AuthResultCode.CredentialOverdue;
+                                response.Token = _tokenService.GenerateIdToken(user);
                             }
 
                             // CASE: Success
@@ -383,12 +446,6 @@ namespace PassengerManager.Server.Services
                                 user.LockoutEnd = null;
                                 user.LastLogin = DateTime.UtcNow;
                                 driverUser = user;
-
-                                List<string> availableRoutes = await _context.Routes
-                                    .Where(r => r.AgencyId == vehicle.AgencyId)
-                                    .OrderBy(r => r.ShortName)
-                                    .Select(r => r.ShortName)
-                                    .ToListAsync();
 
                                 List<Shared.Models.Shift> openShifts = await _context.Shifts
                                     .Where(s => s.VehicleId == request.VehicleId && s.EndTime == null)
@@ -405,19 +462,12 @@ namespace PassengerManager.Server.Services
                                     VehicleId = request.VehicleId,
                                     StartTime = DateTime.UtcNow,
                                     IsApproved = true,
-                                    RouteId = null,
-                                    CurrentTripId = null
                                 };
 
-                                response = new DriverLoginResponse
-                                {
-                                    Success = true,
-                                    Message = "Login successful",
-                                    DriverName = user.FullName ?? string.Empty,
-                                    Code = AuthResultCode.Success
-                                };
-
-                                response.AvailableRoutes.AddRange(availableRoutes);
+                                response.Success = true;
+                                response.Message = "Login successful";
+                                response.DriverName = user.FullName ?? string.Empty;
+                                response.Code = AuthResultCode.Success;
                             }                            
                         }
                     }
@@ -439,7 +489,7 @@ namespace PassengerManager.Server.Services
                         if (response.Success && newShift != null && driverUser != null)
                         {
                             response.ShiftId = newShift.Id;
-                            response.Token = _tokenService.GenerateDriverToken(driverUser, newShift.Id, newShift.VehicleId);
+                            response.Token = _tokenService.GenerateDriverToken(driverUser, newShift.Id, newShift.VehicleId, driverUser.AgencyId);
                         }
 
                         await transaction.CommitAsync();
@@ -457,12 +507,27 @@ namespace PassengerManager.Server.Services
             {
                 _logger.LogError(ex, "Error in AuthService during DriverLogin");
 
-                return new DriverLoginResponse
-                {
-                    Success = false,
-                    Message = "An error occurred during login. Please try again later",
-                    Code = AuthResultCode.Unknown
-                };
+                response.Success = false;
+                response.Message = "An error occurred during login. Please try again later";
+                response.Code = AuthResultCode.Unknown;
+                return response;
+            }
+            finally
+            {
+                await _messageService.PublishSafeAsync(
+                    new AuthEvents.LoginAttempted(
+                        Channel: "driver",
+                        Login: request.UserId,
+                        Success: response.Success,
+                        Code: response.Code.ToString(),
+                        OccurredAtUtc: DateTime.UtcNow,
+                        UserId: driverUser?.Id,
+                        Role: driverUser?.Role?.RoleName,
+                        VehicleId: request.VehicleId,
+                        ShiftId: response.Success ? response.ShiftId : null,
+                        FailureReason: response.Success ? null : response.Message),
+                    "Auth.LoginAttempted",
+                    context.CancellationToken);
             }
         }
 
@@ -471,9 +536,17 @@ namespace PassengerManager.Server.Services
         {
             _context.ChangeTracker.Clear();
 
+            ClaimsPrincipal? userPrincipal = context.GetHttpContext().User;
+            int actorUserId = userPrincipal?.GetUserId() ?? -1;
+            PasswordChangeResponse response = new PasswordChangeResponse
+            {
+                Success = false,
+                Message = "An error occurred during password change. Please try again later.",
+                Code = AuthResultCode.Unknown
+            };
+
             try
             {
-                ClaimsPrincipal? userPrincipal = context.GetHttpContext().User;
                 int userId = userPrincipal.GetUserId();
 
                 Shared.Models.User? user = await _context.Users
@@ -483,135 +556,131 @@ namespace PassengerManager.Server.Services
                 // CASE: Failure - Invalid User ID
                 if (user == null)
                 {
-                    return new PasswordChangeResponse
-                    {
-                        Success = false,
-                        Message = "An error occurred during password change. Please try again later.",
-                        Code = AuthResultCode.Unknown
-                    };
+                    response.Success = false;
+                    response.Message = "An error occurred during password change. Please try again later.";
+                    response.Code = AuthResultCode.Unknown;
                 }
-
-                bool isStaff = user.Role != null && !user.Role.RoleName.Equals("Driver", StringComparison.OrdinalIgnoreCase);
-                int minPasswordLength = isStaff ? AuthDefaults.Staff.MinPasswordLength : AuthDefaults.Terminal.MinPasswordLength;
-                int recentPasswordHistoryCount = isStaff ? AuthDefaults.Staff.RecentPasswordHistoryCount : AuthDefaults.Terminal.RecentPasswordHistoryCount;
-
-                // CASE: Failure - Account lockout
-                if (user.IsLockedOut == true && user.LockoutEnd > DateTime.UtcNow)
+                else
                 {
-                    double remaining = Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalSeconds);
-                    return new PasswordChangeResponse
-                    {
-                        Success = false,
-                        Message = $"Account is locked. Try again in {remaining} second(s)",
-                        Code = AuthResultCode.AccountLockout
-                    };
-                }
+                    bool isStaff = user.Role != null && !user.Role.RoleName.Equals("Driver", StringComparison.OrdinalIgnoreCase);
+                    int minPasswordLength = isStaff ? AuthDefaults.Staff.MinPasswordLength : AuthDefaults.Terminal.MinPasswordLength;
+                    int recentPasswordHistoryCount = isStaff ? AuthDefaults.Staff.RecentPasswordHistoryCount : AuthDefaults.Terminal.RecentPasswordHistoryCount;
 
-                // CASE: Failure - Incorrect new password format
-                if (request.NewPassword.Length < minPasswordLength)
-                {
-                    return new PasswordChangeResponse
+                    // CASE: Failure - Account lockout
+                    if (user.IsLockedOut == true && user.LockoutEnd > DateTime.UtcNow)
                     {
-                        Success = false,
-                        Message = $"New password must be at least {minPasswordLength} characters long",
-                        Code = AuthResultCode.InvalidPasswordFormat
-                    };
-                }
-
-                // CASE: Failure - Incorrect new password format
-                if (!isStaff && request.NewPassword.Any(c => !char.IsDigit(c)))
-                {
-                    return new PasswordChangeResponse
-                    {
-                        Success = false,
-                        Message = $"Driver passwords can only be numeric",
-                        Code = AuthResultCode.InvalidPasswordFormat
-                    };
-                }
-
-                // CASE: Failure - Incorrect current password
-                if (!PasswordHandler.VerifyPassword(request.CurrentPassword, user.PasswordHash))
-                {
-                    user.FailedLoginAttempts = (user.FailedLoginAttempts ?? 0) + 1;
-                    int maxFailedAttempts = isStaff ? AuthDefaults.Staff.MaxFailedAttempts : AuthDefaults.Terminal.MaxFailedAttempts;
-                    if (user.FailedLoginAttempts >= maxFailedAttempts)
-                    {
-                        user.IsLockedOut = true;
-                        user.LockoutEnd = DateTime.UtcNow.AddSeconds(AuthDefaults.Staff.LockoutDurationSeconds);
+                        double remaining = Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalSeconds);
+                        response.Success = false;
+                        response.Message = $"Account is locked. Try again in {remaining} second(s)";
+                        response.Code = AuthResultCode.AccountLockout;
                     }
 
-                    return new PasswordChangeResponse
+                    // CASE: Failure - Incorrect new password format
+                    else if (request.NewPassword.Length < minPasswordLength)
                     {
-                        Success = false,
-                        Message = "Incorrect current password",
-                        Code = AuthResultCode.InvalidPassword
-                    };
-                }
-
-                // CASE: Failure - Password reuse
-                string newHashedPassword = PasswordHandler.GetHashedPassword(request.NewPassword);
-
-                List<Shared.Models.PasswordHistory> recentHistory = await _context.PasswordHistories
-                    .Where(h => h.UserId == user.Id)
-                    .OrderByDescending(h => h.CreatedAt)
-                    .Take(recentPasswordHistoryCount)
-                    .ToListAsync();
-
-                if (user.PasswordHash == newHashedPassword || recentHistory.Any(h => h.PasswordHash == newHashedPassword))
-                {
-                    return new PasswordChangeResponse
-                    {
-                        Success = false,
-                        Message = $"New password must be different from the last {recentPasswordHistoryCount} passwords",
-                        Code = AuthResultCode.InvalidPasswordHistory
-                    };
-                }
-
-                // CASE: Success
-                user.PasswordHash = newHashedPassword;
-                user.FailedLoginAttempts = 0;
-                user.IsLockedOut = false;
-                user.LockoutEnd = null;
-
-                _context.PasswordHistories.Add(new Shared.Models.PasswordHistory
-                {
-                    UserId = user.Id,
-                    PasswordHash = user.PasswordHash,
-                    CreatedAt = DateTime.UtcNow
-                });                
-
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                {
-                    try
-                    {
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
+                        response.Success = false;
+                        response.Message = $"New password must be at least {minPasswordLength} characters long";
+                        response.Code = AuthResultCode.InvalidPasswordFormat;
                     }
-                    catch
+
+                    // CASE: Failure - Incorrect new password format
+                    else if (!isStaff && request.NewPassword.Any(c => !char.IsDigit(c)))
                     {
-                        await transaction.RollbackAsync();
-                        throw;
+                        response.Success = false;
+                        response.Message = $"Driver passwords can only be numeric";
+                        response.Code = AuthResultCode.InvalidPasswordFormat;
+                    }
+
+                    // CASE: Failure - Incorrect current password
+                    else if (!PasswordHandler.VerifyPassword(request.CurrentPassword, user.PasswordHash))
+                    {
+                        user.FailedLoginAttempts = (user.FailedLoginAttempts ?? 0) + 1;
+                        int maxFailedAttempts = isStaff ? AuthDefaults.Staff.MaxFailedAttempts : AuthDefaults.Terminal.MaxFailedAttempts;
+                        if (user.FailedLoginAttempts >= maxFailedAttempts)
+                        {
+                            user.IsLockedOut = true;
+                            user.LockoutEnd = DateTime.UtcNow.AddSeconds(AuthDefaults.Staff.LockoutDurationSeconds);
+                        }
+
+                        response.Success = false;
+                        response.Message = "Incorrect current password";
+                        response.Code = AuthResultCode.InvalidPassword;
+                    }
+                    else
+                    {
+                        // CASE: Failure - Password reuse
+                        string newHashedPassword = PasswordHandler.GetHashedPassword(request.NewPassword);
+
+                        List<Shared.Models.PasswordHistory> recentHistory = await _context.PasswordHistories
+                            .Where(h => h.UserId == user.Id)
+                            .OrderByDescending(h => h.CreatedAt)
+                            .Take(recentPasswordHistoryCount)
+                            .ToListAsync();
+
+                        if (user.PasswordHash == newHashedPassword || recentHistory.Any(h => h.PasswordHash == newHashedPassword))
+                        {
+                            response.Success = false;
+                            response.Message = $"New password must be different from the last {recentPasswordHistoryCount} passwords";
+                            response.Code = AuthResultCode.InvalidPasswordHistory;
+                        }
+                        else
+                        {
+                            // CASE: Success
+                            user.PasswordHash = newHashedPassword;
+                            user.FailedLoginAttempts = 0;
+                            user.IsLockedOut = false;
+                            user.LockoutEnd = null;
+
+                            _context.PasswordHistories.Add(new Shared.Models.PasswordHistory
+                            {
+                                UserId = user.Id,
+                                PasswordHash = user.PasswordHash,
+                                CreatedAt = DateTime.UtcNow
+                            });
+
+                            using var transaction = await _context.Database.BeginTransactionAsync();
+                            {
+                                try
+                                {
+                                    await _context.SaveChangesAsync();
+                                    await transaction.CommitAsync();
+                                }
+                                catch
+                                {
+                                    await transaction.RollbackAsync();
+                                    throw;
+                                }
+                            }
+
+                            response.Success = true;
+                            response.Message = "Password change successful";
+                            response.Code = AuthResultCode.Success;
+                        }
                     }
                 }
-
-                return new PasswordChangeResponse
-                {
-                    Success = true,
-                    Message = "Password change successful",
-                    Code = AuthResultCode.Success
-                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in AuthService during PasswordChange");
 
-                return new PasswordChangeResponse
-                {
-                    Success = false,
-                    Message = "An error occurred during password change. Please try again later.",
-                    Code = AuthResultCode.Unknown
-                };
+                response.Success = false;
+                response.Message = "An error occurred during password change. Please try again later.";
+                response.Code = AuthResultCode.Unknown;
             }
+            finally
+            {
+                await _messageService.PublishSafeAsync(
+                    new AuthEvents.PasswordChanged(
+                        ActorUserId: actorUserId,
+                        Success: response.Success,
+                        Code: response.Code.ToString(),
+                        OccurredAtUtc: DateTime.UtcNow,
+                        FailureReason: response.Success ? null : response.Message),
+                    "Auth.PasswordChanged",
+                    context.CancellationToken);
+            }
+
+            return response;
         }
 
         [Authorize]
@@ -619,108 +688,118 @@ namespace PassengerManager.Server.Services
         {
             _context.ChangeTracker.Clear();
 
+            ClaimsPrincipal? user = context.GetHttpContext().User;
+            int actorUserId = user?.GetUserId() ?? -1;
+            PasswordResetResponse response = new PasswordResetResponse
+            {
+                Success = false,
+                Message = "Internal server error",
+                Code = AuthResultCode.Unknown
+            };
+
             try
             {
-                ClaimsPrincipal? user = context.GetHttpContext().User;                
-
                 // CASE: Failure - Invalid User ID
                 if (user == null || !int.TryParse(user.FindFirst("AccessLevel")?.Value, out int userLevel))
                 {
-                    return new PasswordResetResponse
-                    {
-                        Success = false,
-                        Message = "An error occurred during password reset. Please try again later.",
-                        Code = AuthResultCode.Unknown
-                    };
-                }                             
+                    response.Success = false;
+                    response.Message = "An error occurred during password reset. Please try again later.";
+                    response.Code = AuthResultCode.Unknown;
+                }
 
                 // CASE: Failure - Account prohibited
-                if (!user.IsInRole("Admin") && !user.IsInRole("SuperAdmin"))
+                else if (!user.IsInRole("Admin") && !user.IsInRole("SuperAdmin"))
                 {
                     _logger.LogCritical($"Unauthorized admin usage detected: IP:'{context.Peer}' on PasswordReset at AuthService");
 
-                    return new PasswordResetResponse
-                    {
-                        Success = false,
-                        Message = $"Access denied",
-                        Code = AuthResultCode.Unauthorized
-                    };
+                    response.Success = false;
+                    response.Message = "Access denied";
+                    response.Code = AuthResultCode.Unauthorized;
                 }
-
-                Shared.Models.User? targetUser = await _context.Users
-                    .Include(u => u.Role)
-                    .FirstOrDefaultAsync(u => u.Id == request.TargetUserId);   
-                
-                // CASE: Failure - Invalid target user id
-                if (targetUser == null)
+                else
                 {
-                    return new PasswordResetResponse
+                    Shared.Models.User? targetUser = await _context.Users
+                        .Include(u => u.Role)
+                        .FirstOrDefaultAsync(u => u.Id == request.TargetUserId);
+
+                    // CASE: Failure - Invalid target user id
+                    if (targetUser == null)
                     {
-                        Success = false,
-                        Message = $"Target user is invalid",
-                        Code = AuthResultCode.InvalidTarget
-                    };
-                }
-
-                int targetLevel = targetUser.Role?.AccessLevel ?? 0;
-
-                // CASE: Failure - Invalid target user role
-                if (targetLevel >= userLevel)
-                {
-                    return new PasswordResetResponse
-                    {
-                        Success = false,
-                        Message = $"Only users with lower access level may change the target's password",
-                        Code = AuthResultCode.InvalidRole
-                    };
-                }                           
-
-                // CASE: Success
-                targetUser.PasswordHash = PasswordHandler.GetHashedPassword(GeneratePassword(targetUser));
-                targetUser.FailedLoginAttempts = 0;
-                targetUser.IsLockedOut = false;
-                targetUser.LockoutEnd = null;
-
-                _context.PasswordHistories.Add(new Shared.Models.PasswordHistory
-                {
-                    UserId = targetUser.Id,
-                    PasswordHash = targetUser.PasswordHash,
-                    CreatedAt = DateTime.UtcNow
-                });                
-
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                {
-                    try
-                    {
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
+                        response.Success = false;
+                        response.Message = "Target user is invalid";
+                        response.Code = AuthResultCode.InvalidTarget;
                     }
-                    catch
+                    else
                     {
-                        await transaction.RollbackAsync();
-                        throw;
+                        int targetLevel = targetUser.Role?.AccessLevel ?? 0;
+
+                        // CASE: Failure - Invalid target user role
+                        if (targetLevel >= userLevel)
+                        {
+                            response.Success = false;
+                            response.Message = "Only users with lower access level may change the target's password";
+                            response.Code = AuthResultCode.InvalidRole;
+                        }
+                        else
+                        {
+                            // CASE: Success
+                            targetUser.PasswordHash = PasswordHandler.GetHashedPassword(GeneratePassword(targetUser));
+                            targetUser.FailedLoginAttempts = 0;
+                            targetUser.IsLockedOut = false;
+                            targetUser.LockoutEnd = null;
+
+                            _context.PasswordHistories.Add(new Shared.Models.PasswordHistory
+                            {
+                                UserId = targetUser.Id,
+                                PasswordHash = targetUser.PasswordHash,
+                                CreatedAt = DateTime.UtcNow
+                            });
+
+                            using var transaction = await _context.Database.BeginTransactionAsync();
+                            {
+                                try
+                                {
+                                    await _context.SaveChangesAsync();
+                                    await transaction.CommitAsync();
+                                }
+                                catch
+                                {
+                                    await transaction.RollbackAsync();
+                                    throw;
+                                }
+                            }
+
+                            response.Success = true;
+                            response.Message = "Password reset successful";
+                            response.Code = AuthResultCode.Success;
+                            response.Generated = targetUser.PasswordHash;
+                        }
                     }
                 }
-
-                return new PasswordResetResponse
-                {
-                    Success = true,
-                    Message = "Password reset successful",
-                    Code = AuthResultCode.Success,
-                    Generated = targetUser.PasswordHash
-                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in AuthService during PasswordReset");
 
-                return new PasswordResetResponse
-                {
-                    Success = false,
-                    Message = "Internal server error",
-                    Code = AuthResultCode.Unknown
-                };
+                response.Success = false;
+                response.Message = "Internal server error";
+                response.Code = AuthResultCode.Unknown;
             }
+            finally
+            {
+                await _messageService.PublishSafeAsync(
+                    new AuthEvents.PasswordReset(
+                        ActorUserId: actorUserId,
+                        TargetUserId: request.TargetUserId,
+                        Success: response.Success,
+                        Code: response.Code.ToString(),
+                        OccurredAtUtc: DateTime.UtcNow,
+                        FailureReason: response.Success ? null : response.Message),
+                    "Auth.PasswordReset",
+                    context.CancellationToken);
+            }
+
+            return response;
         }
     }
 }

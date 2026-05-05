@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using PassengerManager.Server.Hubs;
 using PassengerManager.Server.Services;
 using PassengerManager.Server.Services.Background;
+using PassengerManager.Server.Services.Interfaces;
 using PassengerManager.Server.Services.Security;
 using PassengerManager.Server.Services.Static;
 using PassengerManager.Shared.Protos;
@@ -123,6 +124,9 @@ namespace PassengerManager.Server
 
             builder.Services.AddSignalR();
             builder.Services.AddScoped<ITokenService, JwtTokenService>();
+            builder.Services.AddScoped<IMessageService, MessageService>();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
+            builder.Services.AddSingleton<DispatcherStateTrackerService>();
 
             // Add Redis handling
             GtfsScaleSettings defaultScaleSettings = (builder.Configuration.GetValue<string>("SystemProfile") ?? "Small").ToLower() switch
@@ -214,6 +218,8 @@ namespace PassengerManager.Server
                 // Map gRPC services
                 app.MapGrpcService<PassengerManager.Server.Services.AuthService>();
                 app.MapGrpcService<PassengerManager.Server.Services.DriverOpsService>();
+                app.MapGrpcService<PassengerManager.Server.Services.CommunicationService>();
+                app.MapGrpcService<PassengerManager.Server.Services.TelemetryService>();
                 // app.MapGrpcService<PassengerManager.Server.Services.DispatcherOpsService>();
                 // app.MapGrpcService<PassengerManager.Server.Services.AdminOpsService>();
 
@@ -241,3 +247,4 @@ namespace PassengerManager.Server
         }
     }
 }
+

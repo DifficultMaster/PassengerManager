@@ -2,11 +2,15 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Abstractions;
 using PassengerManager.Server.Extensions;
 using PassengerManager.Server.Hubs;
 using PassengerManager.Server.Models;
 using PassengerManager.Server.Protos.Static;
+using PassengerManager.Server.Services.Events;
 using PassengerManager.Server.Services.Interfaces;
+using PassengerManager.Shared.DTOs;
+using PassengerManager.Shared.Models;
 using PassengerManager.Shared.Protos;
 using StackExchange.Redis;
 using System.Security.Claims;
@@ -22,20 +26,25 @@ namespace PassengerManager.Server.Services
         private readonly INotificationService _notifier;
         private readonly IConnectionMultiplexer _redis;
         private readonly int _tripInfoRelevanceHours;
+        private readonly IMessageService _messageService;
 
         public DriverOpsService(
             ILogger<DriverOpsService> logger, 
             PassengerManagerContext context,
             INotificationService notifier,
             IConnectionMultiplexer redis,
+            IMessageService messageService,
             int tripInfoRelevanceHours = 12)
         {
             _logger = logger;
             _context = context;
             _notifier = notifier;
             _redis = redis;
+            _messageService = messageService;
             _tripInfoRelevanceHours = tripInfoRelevanceHours;
         }
+
+        private record CachedRouteOption(string RouteId, string ShortName, string LongName, List<CachedTripOption> Trips);
 
         private record CachedTripOption(string TripId, string Headsign, int DirectionId);
 
@@ -68,434 +77,361 @@ namespace PassengerManager.Server.Services
             };
         }        
 
-        public override async Task<SetShiftRouteResponse> SetShiftRoute(SetShiftRouteRequest request, ServerCallContext context)
+        public override async Task<GetManifestResponse> GetManifest(GetManifestRequest request, ServerCallContext context)
         {
             _context.ChangeTracker.Clear();
 
-            try
+            GetManifestResponse response = new GetManifestResponse
             {
-                ClaimsPrincipal user = context.GetHttpContext().User;
-                long shiftId = user.GetShiftId();
-
-                // CASE: Failure - Missing or invalid shift ID
-                if (shiftId <= 0)
-                {
-                    return new SetShiftRouteResponse
-                    {
-                        Success = false,
-                        Message = "Unauthorized: Invalid token state",
-                        Code = DriverOpsResultCode.Unauthorized
-                    };
-                }
-
-                Shared.Models.Shift? shift = await _context.Shifts.FindAsync(shiftId);
-
-                // CASE: Failure - Shift not found
-                if (shift == null || shift.EndTime != null)
-                {
-                    return new SetShiftRouteResponse
-                    {
-                        Success = false,
-                        Message = "Shift is closed",
-                        Code = DriverOpsResultCode.ShiftInactive
-                    };
-                }
-
-                // CASE: Success - route already set to this shift
-                if (shift.RouteId == request.RouteId)
-                {
-                    return new SetShiftRouteResponse
-                    {
-                        Success = true,
-                        Message = "Route set successfully",
-                        Code = DriverOpsResultCode.Success
-                    };
-                }
-
-                // CASE: Success - route will now be set to this shift
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                {
-                    try
-                    {
-                        shift.RouteId = request.RouteId;
-                        shift.CurrentTripId = null;
-
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
-                    }
-                    catch
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
-                }
-
-                return new SetShiftRouteResponse
-                {
-                    Success = true,
-                    Message = "Route set successfully",
-                    Code = DriverOpsResultCode.Success
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in DriverOpsService during SetShiftRoute");
-
-                return new SetShiftRouteResponse
-                {
-                    Success = false,
-                    Message = "Internal server error",
-                    Code = DriverOpsResultCode.Unknown
-                };
-            }
-        }
-
-        public override async Task<GetRouteTripsResponse> GetRouteTrips(GetRouteTripsRequest request, ServerCallContext context)
-        {
-            _context.ChangeTracker.Clear();
+                Success = true,
+                Message = "Manifest retrieved successfully",
+                Code = DriverOpsResultCode.Success
+            };
 
             try
             {
-                GetRouteTripsResponse response = new GetRouteTripsResponse
-                {
-                    Success = true,
-                    Message = "Trips retrieved successfully",
-                    Code = DriverOpsResultCode.Success
-                };
-
                 IDatabase db = _redis.GetDatabase();
-                string cacheKey = $"trips:route:{request.RouteId}";
+                ClaimsPrincipal user = context.GetHttpContext().User;
+
+                string agencyId = user.FindFirst("AgencyId")?.Value ?? "";                 
+                string cacheKey = $"manifest:agency:{agencyId}:routes";
                 RedisValue cachedData = await db.StringGetAsync(cacheKey);
 
+                List<RouteOptionDto> routesToProcess;
                 if (cachedData.HasValue)
                 {
-                    var cachedOptions = JsonSerializer.Deserialize<List<CachedTripOption>>((string)cachedData!);
-                    if (cachedOptions != null)
-                    {
-                        foreach (CachedTripOption option in cachedOptions)
-                        {
-                            response.Options.Add(new RouteTripOption
-                            { 
-                                TripId = option.TripId,
-                                Headsign = option.Headsign,
-                                DirectionId = option.DirectionId
-                            });
-                        }
-
-                        return response;
-                    }
+                    routesToProcess = JsonSerializer.Deserialize<List<RouteOptionDto>>((string)cachedData!)
+                        ?? new List<RouteOptionDto>();
                 }
-
-                List<Shared.Models.Trip> distinctTrips = await _context.Trips
-                    .AsNoTracking()
-                    .Where(t => t.RouteId == request.RouteId)
-                    .GroupBy(t => new { t.Headsign, t.DirectionId })
-                    .Select(g => g.First())
-                    .ToListAsync();
-
-                List<CachedTripOption> cacheListToSave = new List<CachedTripOption>();
-                foreach (Shared.Models.Trip trip in distinctTrips)
+                else
                 {
-                    response.Options.Add(new RouteTripOption
-                    {
-                        TripId = trip.TripId,
-                        Headsign = trip.Headsign ?? "Unknown",
-                        DirectionId = trip.DirectionId ?? 0
-                    });
-
-                    cacheListToSave.Add(new CachedTripOption(
-                        trip.TripId,
-                        trip.Headsign ?? "Unknown",
-                        trip.DirectionId ?? 0
-                    ));
+                    routesToProcess = await _context.Routes
+                        .AsNoTracking()
+                        .Where(r => r.AgencyId == agencyId)
+                        .Select(r => new RouteOptionDto(
+                            r.RouteId,
+                            r.ShortName,
+                            r.LongName ?? r.ShortName,
+                            r.Trips.Select(t => new TripOptionDto(
+                                t.TripId,
+                                t.Headsign ?? "Unknown",
+                                t.DirectionId ?? 0
+                                )).Distinct().ToList()
+                            ))
+                        .ToListAsync();
 
                     try
                     {
-                        await db.StringSetAsync(cacheKey, JsonSerializer.Serialize(cacheListToSave), 
+                        await db.StringSetAsync(cacheKey, JsonSerializer.Serialize(routesToProcess),
                             TimeSpan.FromHours(_tripInfoRelevanceHours), flags: CommandFlags.FireAndForget);
                     }
-                    catch (RedisConnectionException) { }
+                    catch (RedisConnectionException ex) 
+                    {
+                        _logger.LogWarning(ex, "Failed to write to Redis cache during GetManifest");
+                    }
+                }     
+                
+                foreach (RouteOptionDto route in routesToProcess)
+                {
+                    RouteOption option = new RouteOption
+                    {
+                        RouteId = route.RouteId,
+                        ShortName = route.ShortName,
+                        LongName = route.LongName
+                    };
+
+                    option.Trips.AddRange(route.Trips.Select(t => new TripOption
+                    {
+                        TripId = t.TripId,
+                        Headsign = t.Headsign,
+                        DirectionId = t.DirectionId
+                    }));
+
+                    response.Routes.Add(option);
                 }
 
-                return response;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in DriverOpsService during GetRouteTrips");
+                _logger.LogError(ex, "Error in DriverOpsService during GetManifest");
 
-                return new GetRouteTripsResponse
-                {
-                    Success = false,
-                    Message = "Internal server error",
-                    Code = DriverOpsResultCode.Unknown
-                };
+                response.Success = false;
+                response.Message = "Internal server error";
+                response.Code = DriverOpsResultCode.Unknown;
             }
-        }
 
-        public override async Task<SetShiftTripResponse> SetShiftTrip(SetShiftTripRequest request, ServerCallContext context)
-        {
-            _context.ChangeTracker.Clear();
-
-            try
-            {
-                ClaimsPrincipal user = context.GetHttpContext().User;
-                long shiftId = user.GetShiftId();
-
-                // CASE: Failure - Missing or invalid shift ID
-                if (shiftId <= 0)
-                {
-                    return new SetShiftTripResponse
-                    {
-                        Success = false,
-                        Message = "Unauthorized: Invalid token state",
-                        Code = DriverOpsResultCode.Unauthorized
-                    };
-                }
-
-                Shared.Models.Shift? shift = await _context.Shifts.FindAsync(shiftId);
-
-                // CASE: Failure - Shift not found
-                if (shift == null || shift.EndTime != null)
-                {
-                    return new SetShiftTripResponse
-                    {
-                        Success = false,
-                        Message = "Shift is closed",
-                        Code = DriverOpsResultCode.ShiftInactive
-                    };
-                }
-
-                // CASE: Success - trip already set to this shift
-                if (shift.CurrentTripId == request.TripId)
-                {
-                    return new SetShiftTripResponse
-                    {
-                        Success = true,
-                        Message = "Trip set successfully",
-                        Code = DriverOpsResultCode.Success
-                    };
-                }
-
-                // CASE: Success - trip will now be set to this shift
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                {
-                    try
-                    {
-                        shift.CurrentTripId = request.TripId;
-
-                        if (string.IsNullOrEmpty(shift.RouteId))
-                        {
-                            Shared.Models.Trip? trip = await _context.Trips.FindAsync(request.TripId);
-
-                            if (trip != null)
-                            {
-                                shift.RouteId = trip.RouteId;
-                            }
-                        }
-
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
-                    }
-                    catch
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
-                }
-
-                return new SetShiftTripResponse
-                {
-                    Success = true,
-                    Message = "Trip set successfully",
-                    Code = DriverOpsResultCode.Success
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in DriverOpsService during SetShiftTrip");
-                return new SetShiftTripResponse
-                {
-                    Success = false,
-                    Message = "Internal server error",
-                    Code = DriverOpsResultCode.Unknown
-                };
-            }
+            return response;
         }
 
         public override async Task<EndShiftResponse> EndShift(EndShiftRequest request, ServerCallContext context)
         {
             _context.ChangeTracker.Clear();
 
+            ClaimsPrincipal? principal = null;
+            long shiftId = 0;
+            DateTime endDateTime = DateTime.UtcNow;
+            EndShiftResponse response = new EndShiftResponse
+            {
+                Success = false,
+                Message = "Internal server error",
+                Code = DriverOpsResultCode.Unknown
+            };
+
             try
             {
-                ClaimsPrincipal user = context.GetHttpContext().User;
-                long shiftId = user.GetShiftId();
+                principal = context.GetHttpContext().User;
+                shiftId = principal.GetShiftId();
+                Shared.Models.Shift? shift = await _context.Shifts.FindAsync(shiftId);
 
                 // CASE: Failure - Missing or invalid shift ID
                 if (shiftId <= 0)
                 {
-                    return new EndShiftResponse
-                    {
-                        Success = false,
-                        Message = "Unauthorized: Invalid token state",
-                        Code = DriverOpsResultCode.Unauthorized
-                    };
-                }
-
-                Shared.Models.Shift? shift = await _context.Shifts.FindAsync(shiftId);
+                    response.Success = false;
+                    response.Message = "Unauthorized: Invalid token state";
+                    response.Code = DriverOpsResultCode.Unauthorized;                   
+                }              
 
                 // CASE: Success - Shift already closed
-                if (shift == null || shift.EndTime != null)
+                else if (shift == null || shift.EndTime != null)
                 {
-                    return new EndShiftResponse
-                    {
-                        Success = true,
-                        Message = "Shift is closed",
-                        Code = DriverOpsResultCode.ShiftInactive
-                    };
+                    response.Success = true;
+                    response.Message = "Shift is closed";
+                    response.Code = DriverOpsResultCode.ShiftInactive;                  
                 }
 
-                // CASE: Success - Shift will now be closed
-                using var transaction = await _context.Database.BeginTransactionAsync();
+                // CASE: Success - Shift will now be closed                
+                else 
                 {
-                    try
+                    using var transaction = await _context.Database.BeginTransactionAsync();
                     {
-                        shift.EndTime = DateTime.UtcNow;
+                        try
+                        {
+                            shift.EndTime = endDateTime;
 
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
+                            await _context.SaveChangesAsync();
+                            await transaction.CommitAsync();
+                        }
+                        catch
+                        {
+                            await transaction.RollbackAsync();
+                            throw;
+                        }
                     }
-                    catch
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
+
+                    response.Success = true;
+                    response.Message = "Shift is closed";
+                    response.Code = DriverOpsResultCode.Success;
                 }
-
-                return new EndShiftResponse
-                {
-                    Success = true,
-                    Message = "Shift is closed",
-                    Code = DriverOpsResultCode.Success
-                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in DriverOpsService during EndShift");
 
-                return new EndShiftResponse
-                {
-                    Success = false,
-                    Message = "Internal server error",
-                    Code = DriverOpsResultCode.Unknown
-                };
+                response.Success = false;
+                response.Message = "Internal server error";
+                response.Code = DriverOpsResultCode.Unknown;
             }
-        }
-
-        public override async Task<HeartbeatResponse> SendHeartbeat(HeartbeatRequest request, ServerCallContext context)
-        {
-            _context.ChangeTracker.Clear();
-
-            ClaimsPrincipal user = context.GetHttpContext().User;
-            long shiftId = user.GetShiftId();
-            string vehicleId = user.GetVehicleId();
-
-            // LOGIC FOR HEARTBEAT, will be coded later as I get to dispatcher's backend logic
-            // Driver can generate Service Alerts
-            // Server auto-generates Trip Updates
-
-            return new HeartbeatResponse
+            finally
             {
-                Success = true
-            };
+                await _messageService.PublishSafeAsync(
+                    new DriverOpsEvents.ShiftEnded(
+                        UserId: principal?.GetUserId() ?? 0,
+                        Success: response.Success,
+                        Code: response.Code.ToString(),
+                        EndDate: endDateTime,
+                        Role: principal?.FindFirst(ClaimTypes.Role)?.Value,
+                        VehicleId: principal?.GetVehicleId(),
+                        AgencyId: principal?.FindFirst("AgencyId")?.Value,
+                        ShiftId: shiftId > 0 ? shiftId : null),
+                    "DriverOps.ShiftEnded",
+                    context.CancellationToken
+                    );
+            }
+
+            return response;
         }
 
         public override async Task<ReportIncidentResponse> ReportIncident(ReportIncidentRequest request, ServerCallContext context)
         {
             _context.ChangeTracker.Clear();
 
+            ReportIncidentResponse response = new ReportIncidentResponse
+            {
+                Success = false
+            };
+
+            ClaimsPrincipal? principal = null;
+            long shiftId = 0;
+            string? vehicleId = null;
+            string? agencyId = null;
+            string? routeId = null;
+            string? alertId = null;
+            int? gtfsCause = null;
+            int? gtfsEffect = null;
+            string? failureReason = "Unhandled exception";
+
             try
             {
-                ClaimsPrincipal user = context.GetHttpContext().User;
-                long shiftId = user.GetShiftId();            
+                principal = context.GetHttpContext().User;
+                shiftId = principal.GetShiftId();
 
                 // CASE: Failure - Missing or invalid shift ID
                 if (shiftId <= 0)
                 {
-                    return new ReportIncidentResponse
-                    {
-                        Success = false
-                    };
+                    response.Success = false;
+                    failureReason = "Invalid shift token state";
                 }
-
-                Shared.Models.Shift? shift = await _context.Shifts
-                    .AsNoTracking()
-                    .Include(s => s.Route)
-                    .FirstOrDefaultAsync(s => s.Id == shiftId);
-
-                // CASE: Failure - Shift not found
-                if (shift == null || shift.EndTime != null)
+                else
                 {
-                    return new ReportIncidentResponse
+                    Shared.Models.Shift? shift = await _context.Shifts
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(s => s.Id == shiftId);
+
+                    // CASE: Failure - Shift not found
+                    if (shift == null || shift.EndTime != null)
                     {
-                        Success = false
-                    };
-                }
-
-                string agencyId = shift.Route?.AgencyId ?? string.Empty;
-
-                int gtfsCause = MapToGtfsCause(request.Type);
-                int gtfsEffect = MapToGtfsEffect(request.Type);
-
-                Shared.Models.ServiceAlert alert = new Shared.Models.ServiceAlert
-                {
-                    AlertId = Guid.NewGuid().ToString(),
-                    RouteId = shift.RouteId,
-                    AgencyId = agencyId,
-                    Cause = gtfsCause,
-                    Effect = gtfsEffect,
-                    HeaderText = request.Type.ToString(),
-                    DescriptionText = request.Description,
-                    IsActive = false,
-                    StartTime = DateTime.Now
-                };
-
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                {
-                    try
-                    {
-                        _context.ServiceAlerts.Add(alert);
-
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();                        
+                        response.Success = false;
+                        failureReason = "Shift is inactive";
                     }
-                    catch
+                    else
                     {
-                        await transaction.RollbackAsync();
-                        throw;
+                        vehicleId = shift.VehicleId;
+                        routeId = await _context.Telemetries
+                            .AsNoTracking()
+                            .Where(t => t.VehicleId == shift.VehicleId && !string.IsNullOrEmpty(t.RouteId))
+                            .OrderByDescending(t => t.Timestamp)
+                            .Select(t => t.RouteId)
+                            .FirstOrDefaultAsync();
+
+                        if (string.IsNullOrWhiteSpace(routeId))
+                        {
+                            response.Success = false;
+                            failureReason = "Route could not be resolved from telemetry";
+                        }
+                        else
+                        {
+                            agencyId = await _context.Routes
+                                .AsNoTracking()
+                                .Where(r => r.RouteId == routeId)
+                                .Select(r => r.AgencyId)
+                                .FirstOrDefaultAsync() ?? string.Empty;
+
+                            gtfsCause = MapToGtfsCause(request.Type);
+                            gtfsEffect = MapToGtfsEffect(request.Type);
+
+                            Shared.Models.ServiceAlert alert = new Shared.Models.ServiceAlert
+                            {
+                                AlertId = Guid.NewGuid().ToString(),
+                                RouteId = routeId,
+                                AgencyId = agencyId,
+                                Cause = gtfsCause.Value,
+                                Effect = gtfsEffect.Value,
+                                HeaderText = request.Type.ToString(),
+                                DescriptionText = request.Description,
+                                IsActive = false,
+                                StartTime = DateTime.Now
+                            };
+
+                            using var transaction = await _context.Database.BeginTransactionAsync();
+                            {
+                                try
+                                {
+                                    _context.ServiceAlerts.Add(alert);
+
+                                    await _context.SaveChangesAsync();
+                                    await transaction.CommitAsync();
+                                }
+                                catch
+                                {
+                                    await transaction.RollbackAsync();
+                                    throw;
+                                }
+                            }
+
+                            _ = _notifier.AlertDispatchersByAgency(
+                                    agencyId: agencyId,
+                                    alertId: alert.AlertId,
+                                    routeId: routeId,
+                                    type: request.Type.ToString()
+                                    );
+
+                            alertId = alert.AlertId;
+                            response.Success = true;
+                            failureReason = null;
+                        }
                     }
                 }
-
-                _ = _notifier.AlertDispatchersByAgency(
-                        agencyId: agencyId,
-                        alertId: alert.AlertId,
-                        routeId: shift.RouteId,
-                        type: request.Type.ToString()
-                        );
-
-                return new ReportIncidentResponse
-                {
-                    Success = true
-                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in DriverOpsService during ReportIncident");
-                return new ReportIncidentResponse
-                {
-                    Success = false
-                };
+
+                response.Success = false;
+                failureReason = "Unhandled exception";
             }
+            finally
+            {
+                await _messageService.PublishSafeAsync(
+                    new DriverOpsEvents.IncidentReported(
+                        UserId: principal?.GetUserId() ?? 0,
+                        Success: response.Success,
+                        OccurredAtUtc: DateTime.UtcNow,
+                        IncidentType: request.Type.ToString(),
+                        ShiftId: shiftId > 0 ? shiftId : null,
+                        VehicleId: vehicleId ?? principal?.GetVehicleId(),
+                        AgencyId: agencyId,
+                        RouteId: routeId,
+                        AlertId: alertId,
+                        GtfsCause: gtfsCause,
+                        GtfsEffect: gtfsEffect,
+                        FailureReason: response.Success ? null : failureReason),
+                    "DriverOps.IncidentReported",
+                    context.CancellationToken);
+            }
+
+            return response;
+        }
+
+        public override async Task<GetTripShapeResponse> GetTripShape(GetTripShapeRequest request, ServerCallContext context)
+        {
+            _context.ChangeTracker.Clear();
+
+            GetTripShapeResponse response = new GetTripShapeResponse();
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.TripId))
+                {
+                    return response;
+                }
+
+                Trip? trip = await _context.Trips
+                    .AsNoTracking()
+                    .Include(t => t.Shape)
+                    .ThenInclude(s => s.ShapePoints)
+                    .Include(t => t.Route)
+                    .FirstOrDefaultAsync(t => t.TripId == request.TripId);
+
+                if (trip?.Shape != null)
+                {
+                    response.Points.AddRange(trip.Shape.ShapePoints
+                        .OrderBy(sp => sp.Sequence)
+                        .Select(sp => new PassengerManager.Shared.Protos.ShapePoint
+                        {
+                            Latitude = sp.Latitude,
+                            Longitude = sp.Longitude,
+                            Sequence = sp.Sequence
+                        }));
+
+                    response.ColorHex = trip.Route?.Color ?? "#0000FF";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in DriverOpsService during GetTripShape for trip {TripId}", request.TripId);
+            }
+
+            return response;
         }
     }
 }

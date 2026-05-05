@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Protos\communication.proto" />
+    <None Remove="Protos\telemetry.proto" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.33.5" />
     <PackageReference Include="Grpc.Tools" Version="2.78.0">
       <PrivateAssets>all</PrivateAssets>
@@ -18,9 +23,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Protobuf Include="Protos\communication.proto" />
     <Protobuf Include="Protos\Static\gtfs-realtime.proto" GrpcServices="None" />
 	<Protobuf Include="Protos\auth.proto" GrpcServices="Both" />
 	<Protobuf Include="Protos\driver-ops.proto" GrpcServices="Both" />
+	<Protobuf Include="Protos\telemetry.proto" />
   </ItemGroup>
 
 </Project>

@@ -19,14 +19,6 @@ public partial class Shift
 
     public bool? IsApproved { get; set; }
 
-    public string RouteId { get; set; }
-
-    public string CurrentTripId { get; set; }
-
-    public virtual Trip CurrentTrip { get; set; }
-
-    public virtual Route Route { get; set; }
-
     public virtual User User { get; set; }
 
     public virtual Vehicle Vehicle { get; set; }

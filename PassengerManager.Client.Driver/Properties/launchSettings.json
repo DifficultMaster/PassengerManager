@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PassengerManager.Client.Driver": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

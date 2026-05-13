@@ -13,22 +13,17 @@
     </UserControl.Resources>
 
     <!-- MainGrid -->
-    <Grid Background="{StaticResource BrushBlueLight}">
-        <!-- Background image (commented out - resource not available)
+    <Grid Background="{StaticResource BrushBase}">
         <Rectangle IsHitTestVisible="False">
             <Rectangle.Fill>
                 <ImageBrush ImageSource="/Resources/driverlogin_bckg.png" Stretch="UniformToFill" Opacity="0.2"/>
             </Rectangle.Fill>
         </Rectangle>
-        -->
 
         <Border HorizontalAlignment="Center" VerticalAlignment="Center" 
                 Width="1080" Height="900" 
-                CornerRadius="30">
-
-            <Border.Background>
-                <SolidColorBrush Color="{StaticResource ColorBlueLight}" Opacity="0.8"/>
-            </Border.Background>
+                CornerRadius="30"
+                Background="{StaticResource BrushBase}">
 
             <!-- ActivityGrid -->
             <Grid Margin="0">

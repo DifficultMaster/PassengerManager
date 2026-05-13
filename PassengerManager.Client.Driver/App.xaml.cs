@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
@@ -101,8 +102,49 @@ namespace PassengerManager.Client.Driver
             _heartbeatService = _host.Services.GetRequiredService<HeartbeatBackgroundService>();
             _heartbeatService.Start();
 
+            ApplyDebugWindowSettings(mainWindow);
             mainWindow.Show();
             base.OnStartup(e);
+        }
+
+        private void ApplyDebugWindowSettings(Window window)
+        {
+#if !DEBUG
+            return;
+#else
+            IConfiguration configuration = _host.Services.GetRequiredService<IConfiguration>();
+            IConfigurationSection section = configuration.GetSection("DebugWindow");
+
+            if (!section.GetValue("Enabled", false))
+            {
+                return;
+            }
+
+            double width = section.GetValue("Width", 1366.0);
+            double height = section.GetValue("Height", 768.0);
+            string? preset = section.GetValue<string>("Preset");
+
+            if (!string.IsNullOrWhiteSpace(preset))
+            {
+                IConfigurationSection presetSection = section.GetSection($"Presets:{preset}");
+                if (presetSection.Exists())
+                {
+                    width = presetSection.GetValue("Width", width);
+                    height = presetSection.GetValue("Height", height);
+                }
+            }
+
+            bool center = section.GetValue("Center", true);
+            bool resizable = section.GetValue("Resizable", true);
+            bool showWindowChrome = section.GetValue("ShowWindowChrome", true);
+
+            window.WindowState = WindowState.Normal;
+            window.Width = width;
+            window.Height = height;
+            window.ResizeMode = resizable ? ResizeMode.CanResize : ResizeMode.NoResize;
+            window.WindowStyle = showWindowChrome ? WindowStyle.SingleBorderWindow : WindowStyle.None;
+            window.WindowStartupLocation = center ? WindowStartupLocation.CenterScreen : WindowStartupLocation.Manual;
+#endif
         }
 
         /// <summary>

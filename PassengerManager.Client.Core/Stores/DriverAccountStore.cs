@@ -10,11 +10,14 @@ namespace PassengerManager.Client.Core.Stores
     {
         public long CurrentShiftId { get; private set; }
 
+        public DateTime LoginTimeUtc { get; private set; } = DateTime.MinValue;
+
         public void Login(DriverLoginResponse response)
         {
             Token = response.Token;
             DisplayName = response.DriverName;
             CurrentShiftId = response.ShiftId;
+            LoginTimeUtc = DateTime.UtcNow;
 
             InvokeStateChanged();
         }
@@ -22,6 +25,7 @@ namespace PassengerManager.Client.Core.Stores
         public override void Logout()
         {
             CurrentShiftId = 0;
+            LoginTimeUtc = DateTime.MinValue;
             base.Logout();
         }
     }

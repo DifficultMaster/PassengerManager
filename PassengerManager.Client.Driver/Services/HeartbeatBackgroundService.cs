@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PassengerManager.Client.Core.Services.Interfaces;
 using PassengerManager.Client.Core.Stores;
+using PassengerManager.Client.Driver.Stores;
 using PassengerManager.Shared.Protos;
 using System;
 using System.Threading;
@@ -23,6 +24,7 @@ namespace PassengerManager.Client.Driver.Services
         private readonly ITelemetryService _telemetryService;
         private readonly HardwareAccountStore _hardwareStore;
         private readonly DriverAccountStore _driverAccountStore;
+        private readonly SideBarStore _sideBarStore;
         private readonly IConfiguration _configuration;
         private readonly ILogger<HeartbeatBackgroundService> _logger;
 
@@ -43,16 +45,21 @@ namespace PassengerManager.Client.Driver.Services
         private double _speed = 0.0;
         private double _odometer = 0.0;
 
+        public event Action<bool>? TrackingAvailabilityChanged;
+        private DateTime _lastLocationUpdateUtc = DateTime.MinValue;
+
         public HeartbeatBackgroundService(
             ITelemetryService telemetryService,
             HardwareAccountStore hardwareStore,
             DriverAccountStore driverAccountStore,
+            SideBarStore sideBarStore,
             IConfiguration configuration,
             ILogger<HeartbeatBackgroundService> logger)
         {
             _telemetryService = telemetryService;
             _hardwareStore = hardwareStore;
             _driverAccountStore = driverAccountStore;
+            _sideBarStore = sideBarStore;
             _configuration = configuration;
             _logger = logger;
 
@@ -135,6 +142,8 @@ namespace PassengerManager.Client.Driver.Services
         /// </summary>
         private async Task HeartbeatLoop(CancellationToken cancellationToken)
         {
+            bool lastTrackingAvailable = false;
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
@@ -142,13 +151,24 @@ namespace PassengerManager.Client.Driver.Services
                     // Always send heartbeat if hardware is logged in
                     if (_hardwareStore.IsLoggedIn)
                     {
+                        if (!lastTrackingAvailable)
+                        {
+                            lastTrackingAvailable = true;
+                            TrackingAvailabilityChanged?.Invoke(true);
+                        }
+
                         // Determine interval based on driver login status
                         bool isDriverLoggedIn = _driverAccountStore.IsLoggedIn;
                         bool isAppInForeground = IsApplicationInForeground();
 
-                        int intervalSeconds = isDriverLoggedIn
-                            ? _activeHeartbeatIntervalSeconds 
-                            : _idleHeartbeatIntervalSeconds;
+                        int intervalSeconds;
+
+                        if (_sideBarStore.IsEmergency)
+                            intervalSeconds = _emergencyHeartbeatIntervalSeconds;
+                        else if (isDriverLoggedIn)
+                            intervalSeconds = _activeHeartbeatIntervalSeconds;
+                        else
+                            intervalSeconds = _idleHeartbeatIntervalSeconds;
 
                         // Send heartbeat
                         var request = new SendHeartbeatRequest
@@ -183,6 +203,12 @@ namespace PassengerManager.Client.Driver.Services
                     }
                     else
                     {
+                        if (lastTrackingAvailable)
+                        {
+                            lastTrackingAvailable = false;
+                            TrackingAvailabilityChanged?.Invoke(false);
+                        }
+
                         // Hardware not logged in, wait longer before checking again
                         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                     }
@@ -216,28 +242,19 @@ namespace PassengerManager.Client.Driver.Services
             }
         }
 
-        /// <summary>
-        /// Updates mock GPS location (in production, would integrate with actual GPS provider).
-        /// </summary>
-        public void UpdateLocation(double latitude, double longitude, double bearing, double speed, double odometer)
+        private void UpdateFallbackLocation()
         {
-            _latitude = latitude;
-            _longitude = longitude;
-            _bearing = bearing;
-            _speed = speed;
-            _odometer = odometer;
-        }
+#if DEBUG
+            if (_lastLocationUpdateUtc > DateTime.UtcNow.AddSeconds(-30))
+                return;
 
-        /// <summary>
-        /// For testing: Updates location with a slight random variation to simulate movement.
-        /// </summary>
-        public void SimulateLocationChange()
-        {
-            Random random = new Random();
-            _latitude += (random.NextDouble() - 0.5) * 0.001;  // ~100 meters variation
-            _longitude += (random.NextDouble() - 0.5) * 0.001; // ~100 meters variation
-            _bearing = (random.NextDouble() * 360);
-            _speed = random.NextDouble() * 50; // 0-50 km/h
+            double step = 0.00005;
+            _latitude += step;
+            _longitude += step;
+            _bearing = (_bearing + 5) % 360;
+            _speed = Math.Max(0, _speed);
+            _lastLocationUpdateUtc = DateTime.UtcNow;
+#endif
         }
 
         public void Dispose()

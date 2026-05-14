@@ -21,5 +21,8 @@ namespace PassengerManager.Client.Driver.Stores
 
         [ObservableProperty] 
         private bool _isTrackerOn = false;
+
+        [ObservableProperty]
+        private bool _isTrackingAvailable = false;
     }
 }

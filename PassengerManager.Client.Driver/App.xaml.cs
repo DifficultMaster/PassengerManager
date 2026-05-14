@@ -7,6 +7,7 @@ using PassengerManager.Client.Core.Services;
 using PassengerManager.Client.Core.Stores;
 using PassengerManager.Client.Core.ViewModels;
 using PassengerManager.Client.Driver.ViewModels;
+using PassengerManager.Client.Driver.Stores;
 using PassengerManager.Shared.Protos;
 using PassengerManager.Client.Core.Services.Interfaces;
 using PassengerManager.Client.Core.Services.Translators;

@@ -16,6 +16,15 @@ service CommunicationService
 			body: "*"
 		};
 	}
+
+	rpc EndCall (EndCallRequest) returns (EndCallResponse)
+	{
+		option (google.api.http) =
+		{
+			post: "/v1/call/end"
+			body: "*"
+		};
+	}
 }
 
 message InitiateCallRequest
@@ -35,4 +44,19 @@ message InitiateCallResponse
 	bool success = 1;
 	string message = 2;
 	string assigned_target_id = 3;
+	string call_id = 4;
 }
+
+message EndCallRequest
+{
+	string call_id = 1;
+   InitiateCallRequest.CallType call_type = 2;
+}
+
+message EndCallResponse
+{
+	bool success = 1;
+	string message = 2;
+}
+
+

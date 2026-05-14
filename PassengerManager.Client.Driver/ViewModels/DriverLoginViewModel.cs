@@ -68,7 +68,6 @@ namespace PassengerManager.Client.Driver.ViewModels
             ConfirmingNewPin
         }
 
-
         public DriverLoginViewModel(
             INavigationService navigationService, 
             DriverAccountStore accountStore,

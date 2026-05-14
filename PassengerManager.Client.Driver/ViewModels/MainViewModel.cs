@@ -3,13 +3,15 @@ using CommunityToolkit.Mvvm.Input;
 using PassengerManager.Client.Core.Stores;
 using Microsoft.Extensions.Logging;
 using System;
+using PassengerManager.Client.Core.ViewModels;
 
-namespace PassengerManager.Client.Core.ViewModels
+namespace PassengerManager.Client.Driver.ViewModels
 {
     public partial class MainViewModel : ObservableObject
     {
         private readonly NavigationStore _navigationStore;
         private readonly ILogger<MainViewModel> _logger;
+        private ToolbarMode _currentToolbarMode;
 
         public BaseViewModel? CurrentViewModel => _navigationStore.CurrentViewModel;
 
@@ -18,6 +20,23 @@ namespace PassengerManager.Client.Core.ViewModels
             _navigationStore = navigationStore;
             _logger = logger;
             _navigationStore.CurrentViewModelChanged += OnCurrentViewModelChanged;
+            _currentToolbarMode = ToolbarMode.Floating;
+        }
+
+        public enum ToolbarMode
+        {
+            Floating,
+            Docked
+        }
+
+        public ToolbarMode CurrentToolbarMode
+        {
+            get => _currentToolbarMode;
+            set
+            {
+                _currentToolbarMode = value;
+                OnPropertyChanged(nameof(CurrentToolbarMode));
+            }
         }
 
         [RelayCommand]
@@ -32,7 +51,7 @@ namespace PassengerManager.Client.Core.ViewModels
 
         private void OnCurrentViewModelChanged()
         {
-            OnPropertyChanged(nameof(CurrentViewModel)); 
+            OnPropertyChanged(nameof(CurrentViewModel));
         }
     }
 }

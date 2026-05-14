@@ -20,106 +20,108 @@
             </Rectangle.Fill>
         </Rectangle>
 
-        <Border HorizontalAlignment="Center" VerticalAlignment="Center" 
-                Width="1080" Height="900" 
-                CornerRadius="30"
-                Background="{StaticResource BrushBase}">
+        <Viewbox Stretch="Uniform" Margin="80">
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center" 
+                    Width="1080" Height="900" 
+                    CornerRadius="30"
+                    Background="{StaticResource BrushBase}">
 
-            <!-- ActivityGrid -->
-            <Grid Margin="0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Text="{Binding PromptText}" Style="{StaticResource HeaderTextStyle}"/>
-
-                    <ItemsControl Grid.Row="1" ItemsSource="{Binding InputCircles}" HorizontalAlignment="Center" Margin="0,20,0,0">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Ellipse Width="40" Height="40" Margin="8,0" Stroke="{StaticResource BrushGray}" StrokeThickness="6">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Fill" Value="Transparent"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding}" Value="True">
-                                                    <Setter Property="Fill" Value="{StaticResource BrushGray}"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Ellipse.Style>
-                                </Ellipse>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- NumpadGrid -->
-                    <Grid Grid.Row="2" Margin="0,46,0,90" MaxWidth="480" MaxHeight="650" Style="{StaticResource NumpadGridStyle}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="30"/>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="30"/>
-                            <ColumnDefinition Width="140"/>
-                        </Grid.ColumnDefinitions>
+                <!-- ActivityGrid -->
+                <Grid Margin="0">
+                    <Grid>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="140"/>
-                            <RowDefinition Height="30"/>
-                            <RowDefinition Height="140"/>
-                            <RowDefinition Height="30"/>
-                            <RowDefinition Height="140"/>
-                            <RowDefinition Height="30"/>
-                            <RowDefinition Height="140"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <Button Grid.Row="0" Grid.Column="0" Content="1" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="1"/>
-                        <Button Grid.Row="0" Grid.Column="2" Content="2" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="2"/>
-                        <Button Grid.Row="0" Grid.Column="4" Content="3" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="3"/>
+                        <TextBlock Text="{Binding PromptText}" Style="{StaticResource HeaderTextStyle}"/>
 
-                        <Button Grid.Row="2" Grid.Column="0" Content="4" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="4"/>
-                        <Button Grid.Row="2" Grid.Column="2" Content="5" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="5"/>
-                        <Button Grid.Row="2" Grid.Column="4" Content="6" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="6"/>
+                        <ItemsControl Grid.Row="1" ItemsSource="{Binding InputCircles}" HorizontalAlignment="Center" Margin="0,20,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Ellipse Width="40" Height="40" Margin="8,0" Stroke="{StaticResource BrushGray}" StrokeThickness="6">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="Transparent"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding}" Value="True">
+                                                        <Setter Property="Fill" Value="{StaticResource BrushGray}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-                        <Button Grid.Row="4" Grid.Column="0" Content="7" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="7"/>
-                        <Button Grid.Row="4" Grid.Column="2" Content="8" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="8"/>
-                        <Button Grid.Row="4" Grid.Column="4" Content="9" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="9"/>
+                        <!-- NumpadGrid -->
+                        <Grid Grid.Row="2" Margin="0,46,0,90" MaxWidth="480" MaxHeight="650" Style="{StaticResource NumpadGridStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="30"/>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="30"/>
+                                <ColumnDefinition Width="140"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="140"/>
+                                <RowDefinition Height="30"/>
+                                <RowDefinition Height="140"/>
+                                <RowDefinition Height="30"/>
+                                <RowDefinition Height="140"/>
+                                <RowDefinition Height="30"/>
+                                <RowDefinition Height="140"/>
+                            </Grid.RowDefinitions>
 
-                        <Button Grid.Row="6" Grid.Column="0" Content="C" Style="{StaticResource NumpadActiveButtonStyle}" Command="{Binding ClearDigitsCommand}"/>
-                        <Button Grid.Row="6" Grid.Column="2" Content="0" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="0"/>
-                        <Button Grid.Row="6" Grid.Column="4" Content="⌫" Style="{StaticResource NumpadActiveButtonStyle}" Command="{Binding RemoveDigitCommand}"/>
-                    </Grid>                
-                </Grid>
-                
-                <!-- ErrorGrid -->
-                <Border Grid.Row="0" Grid.RowSpan="2" Width="818" Height="196" CornerRadius="30" 
-                        HorizontalAlignment="Center" VerticalAlignment="Top" BorderThickness="10"
-                        Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
-                    <Border.Background>
-                        <SolidColorBrush Color="{StaticResource ColorRed}" Opacity="0.8"/>
-                    </Border.Background>
-                    <Border.BorderBrush>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="{StaticResource ColorRed}" Offset="0.0"/>
-                            <GradientStop Color="{StaticResource ColorGray}" Offset="1.0"/>
-                        </LinearGradientBrush>
-                    </Border.BorderBrush>
-                    <Grid>
-                        <Button Content="✕" Style="{StaticResource CloseErrorButtonStyle}" Command="{Binding DismissErrorCommand}"
-                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,0,0"/>
+                            <Button Grid.Row="0" Grid.Column="0" Content="1" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="1"/>
+                            <Button Grid.Row="0" Grid.Column="2" Content="2" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="2"/>
+                            <Button Grid.Row="0" Grid.Column="4" Content="3" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="3"/>
 
-                        <TextBlock Text="{Binding ErrorMessage}" FontSize="36" Foreground="{StaticResource BrushGray}"
-                                   FontFamily="Noto Sans JP" FontWeight="Light" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Margin="24,24,24,24" TextWrapping="Wrap"/>
+                            <Button Grid.Row="2" Grid.Column="0" Content="4" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="4"/>
+                            <Button Grid.Row="2" Grid.Column="2" Content="5" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="5"/>
+                            <Button Grid.Row="2" Grid.Column="4" Content="6" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="6"/>
+
+                            <Button Grid.Row="4" Grid.Column="0" Content="7" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="7"/>
+                            <Button Grid.Row="4" Grid.Column="2" Content="8" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="8"/>
+                            <Button Grid.Row="4" Grid.Column="4" Content="9" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="9"/>
+
+                            <Button Grid.Row="6" Grid.Column="0" Content="C" Style="{StaticResource NumpadActiveButtonStyle}" Command="{Binding ClearDigitsCommand}"/>
+                            <Button Grid.Row="6" Grid.Column="2" Content="0" Style="{StaticResource NumpadButtonStyle}" Command="{Binding AddDigitCommand}" CommandParameter="0"/>
+                            <Button Grid.Row="6" Grid.Column="4" Content="⌫" Style="{StaticResource NumpadActiveButtonStyle}" Command="{Binding RemoveDigitCommand}"/>
+                        </Grid>
                     </Grid>
-                </Border>
-            </Grid>
-        </Border>
+
+                    <!-- ErrorGrid -->
+                    <Border Grid.Row="0" Grid.RowSpan="2" Width="818" Height="196" CornerRadius="30" 
+                            HorizontalAlignment="Center" VerticalAlignment="Top" BorderThickness="10"
+                            Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
+                        <Border.Background>
+                            <SolidColorBrush Color="{StaticResource ColorRed}" Opacity="0.8"/>
+                        </Border.Background>
+                        <Border.BorderBrush>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="{StaticResource ColorRed}" Offset="0.0"/>
+                                <GradientStop Color="{StaticResource ColorGray}" Offset="1.0"/>
+                            </LinearGradientBrush>
+                        </Border.BorderBrush>
+                        <Grid>
+                            <Button Content="✕" Style="{StaticResource CloseErrorButtonStyle}" Command="{Binding DismissErrorCommand}"
+                                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,0,0"/>
+
+                            <TextBlock Text="{Binding ErrorMessage}" FontSize="36" Foreground="{StaticResource BrushGray}"
+                                       FontFamily="Noto Sans JP" FontWeight="Light" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Margin="24,24,24,24" TextWrapping="Wrap"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Viewbox>
     </Grid>
 </UserControl>

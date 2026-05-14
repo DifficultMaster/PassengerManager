@@ -5,11 +5,11 @@
     <Style TargetType="controls:HoldToActivateButton" x:Key="SosButtonStyle" BasedOn="{StaticResource NumpadButtonStyle}">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource BrushWhite}"/>
-        <Setter Property="FontSize" Value="90"/>
+        <Setter Property="FontSize" Value="56"/>
         <Setter Property="FontFamily" Value="Noto Sans JP"/>
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="Width" Value="140"/>
-        <Setter Property="Height" Value="140"/>
+        <Setter Property="Width" Value="120"/>
+        <Setter Property="Height" Value="120"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -18,7 +18,8 @@
                         <Border Background="Transparent"
                                 CornerRadius="70"
                                 BorderBrush="{StaticResource BrushRed}"
-                                BorderThickness="6"/>
+                                BorderThickness="6"
+                                Margin="-6"/>
                         <Grid ClipToBounds="True">
                             <Border CornerRadius="70" ClipToBounds="True">
                                 <Rectangle Fill="{StaticResource BrushRed}"

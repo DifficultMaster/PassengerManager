@@ -80,6 +80,7 @@ namespace PassengerManager.Server.Services
                         response.Success = true;
                         response.Message = "Emergency call routed to all available dispatchers";
                         response.AssignedTargetId = "EMERGENCY_BROADCAST";
+                        response.CallId = callId;
 
                         await _messageService.PublishSafeAsync(
                             new CommunicationEvents.CallInitiated(
@@ -121,6 +122,7 @@ namespace PassengerManager.Server.Services
                         response.Success = true;
                         response.Message = "Call routed to dispatcher";
                         response.AssignedTargetId = targetDispatcherId;
+                        response.CallId = callId;
 
                         await _messageService.PublishSafeAsync(
                             new CommunicationEvents.CallInitiated(
@@ -162,6 +164,7 @@ namespace PassengerManager.Server.Services
                     response.Success = true;
                     response.Message = "Call initiated";
                     response.AssignedTargetId = targetId;
+                    response.CallId = callId;
 
                     await _messageService.PublishSafeAsync(
                         new CommunicationEvents.CallInitiated(
@@ -210,6 +213,66 @@ namespace PassengerManager.Server.Services
                         "Communication.CallFailed",
                         context.CancellationToken);
                 }
+            }
+
+            return response;
+        }
+
+        public override async Task<EndCallResponse> EndCall(EndCallRequest request, ServerCallContext context)
+        {
+            ClaimsPrincipal user = context.GetHttpContext().User;
+            string callerRole = user.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+            string agencyId = user.GetAgencyId();
+
+            EndCallResponse response = new EndCallResponse
+            {
+                Success = false,
+                Message = "Internal server error"
+            };
+
+            try
+            {
+                if (string.IsNullOrEmpty(agencyId))
+                {
+                    response.Success = false;
+                    response.Message = "Unauthorized: No agency context";
+                    return response;
+                }
+
+                if (string.IsNullOrWhiteSpace(request.CallId))
+                {
+                    response.Success = false;
+                    response.Message = "Invalid call ID";
+                    return response;
+                }
+
+                bool isEmergency = request.CallType == InitiateCallRequest.Types.CallType.Emergency;
+                bool canEndCall = callerRole == "Dispatcher" || (!isEmergency && callerRole == "Driver");
+
+                if (!canEndCall)
+                {
+                    response.Success = false;
+                    response.Message = "Only dispatchers can end emergency calls";
+                    return response;
+                }
+
+                response.Success = true;
+                response.Message = "Call ended";
+
+                await _messageService.PublishSafeAsync(
+                    new CommunicationEvents.CallEnded(
+                        CallId: request.CallId,
+                        AgencyId: agencyId,
+                        EndedAtUtc: DateTime.UtcNow),
+                    "Communication.CallEnded",
+                    context.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in CommunicationService during EndCall for agency {AgencyId}", agencyId);
+
+                response.Success = false;
+                response.Message = "Internal server error";
             }
 
             return response;

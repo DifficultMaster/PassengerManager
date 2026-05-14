@@ -12,6 +12,7 @@ using PassengerManager.Client.Core.Services.Interfaces;
 using PassengerManager.Client.Core.Services.Translators;
 using PassengerManager.Client.Driver.Services;
 using System.Globalization;
+using PassengerManager.Client.Driver.ViewModels.Overlay;
 
 namespace PassengerManager.Client.Driver
 {
@@ -63,8 +64,14 @@ namespace PassengerManager.Client.Driver
                         return Task.CompletedTask;
                     });
 
+                    services.AddGrpcClient<CommunicationService.CommunicationServiceClient>(options =>
+                    {
+                        options.Address = new Uri(baseUrl);
+                    });
+
                     services.AddSingleton<IAuthService, GrpcAuthService>();
                     services.AddSingleton<IAuthErrorTranslator, AuthErrorTranslator>();
+                    services.AddSingleton<ICommunicationService, GrpcCommunicationService>();
                     services.AddSingleton<ITelemetryService, GrpcTelemetryService>();
 
                     services.AddSingleton<INavigationService, AppNavigationService>();
@@ -79,6 +86,8 @@ namespace PassengerManager.Client.Driver
                     services.AddSingleton<MainViewModel>();
                     services.AddSingleton<DriverLoginViewModel>();
                     //services.AddSingleton<DriverDashboardViewModel>();
+                    services.AddSingleton<SideBarViewModel>();
+                    services.AddSingleton<StatusBarViewModel>();
 
                     services.AddSingleton<MainWindow>();
                 })

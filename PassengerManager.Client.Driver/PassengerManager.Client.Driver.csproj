@@ -23,6 +23,8 @@
 
   <ItemGroup>
     <Folder Include="Controls\" />
+    <Folder Include="ViewModels\Dashboard\" />
+    <Folder Include="Views\Dashboard\" />
   </ItemGroup>
 
   <ItemGroup>

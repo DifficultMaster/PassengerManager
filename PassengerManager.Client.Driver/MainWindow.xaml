@@ -33,7 +33,7 @@
                 <Style TargetType="Border">
                     <Setter Property="BorderBrush" Value="Transparent"/>
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding SideBarStore.IsEmergency}" Value="True">
+                        <DataTrigger Binding="{Binding DataContext.SideBarStore.IsEmergency, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                             <Setter Property="BorderBrush" Value="{StaticResource BrushRed}"/>
                         </DataTrigger>
                     </Style.Triggers>
@@ -56,12 +56,7 @@
                                 <Setter Property="Grid.ColumnSpan" Value="1"/>
 
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding SideBarStore.IsOverlay}" Value="True">
-                                        <Setter Property="Grid.Column" Value="0"/>
-                                        <Setter Property="Grid.ColumnSpan" Value="2"/>
-                                    </DataTrigger>
-
-                                    <DataTrigger Binding="{Binding SideBarStore.IsOpen}" Value="False">
+                                    <DataTrigger Binding="{Binding DataContext.SideBarStore.IsOverlay, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                                         <Setter Property="Grid.Column" Value="0"/>
                                         <Setter Property="Grid.ColumnSpan" Value="2"/>
                                     </DataTrigger>
@@ -70,12 +65,13 @@
                         </ContentPresenter.Style>
                     </ContentPresenter>
 
-                    <viewsoverlay:SideBarView Grid.Column="0" Panel.ZIndex="10">
+                    <viewsoverlay:SideBarView Grid.Column="0" Panel.ZIndex="10"
+                                              DataContext="{Binding DataContext.SideBarViewModel, RelativeSource={RelativeSource AncestorType=Window}}">
                         <viewsoverlay:SideBarView.Style>
                             <Style TargetType="viewsoverlay:SideBarView">
                                 <Setter Property="Visibility" Value="Visible"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding SideBarStore.IsOverlay}" Value="False">
+                                    <DataTrigger Binding="{Binding DataContext.SideBarStore.IsOverlay, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -83,7 +79,8 @@
                         </viewsoverlay:SideBarView.Style>
                     </viewsoverlay:SideBarView>
                 </Grid>
-                <viewsoverlay:StatusBarView VerticalAlignment="Top" Panel.ZIndex="20"/>
+                <viewsoverlay:StatusBarView VerticalAlignment="Top" Panel.ZIndex="20"
+                                            DataContext="{Binding DataContext.StatusBarViewModel, RelativeSource={RelativeSource AncestorType=Window}}"/>
             </Grid>
         </Viewbox>
     </Grid>

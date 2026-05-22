@@ -2,6 +2,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
+using System.Linq;
+using System.Net.NetworkInformation;
 using System.Windows;
 using PassengerManager.Client.Core.Services;
 using PassengerManager.Client.Core.Stores;
@@ -110,13 +112,53 @@ namespace PassengerManager.Client.Driver
             MainWindow mainWindow = _host.Services.GetRequiredService<MainWindow>();
             mainWindow.DataContext = _host.Services.GetRequiredService<MainViewModel>();
 
+            StatusBarStore statusBarStore = _host.Services.GetRequiredService<StatusBarStore>();
+            SideBarStore sideBarStore = _host.Services.GetRequiredService<SideBarStore>();
+
+            UpdateConnectionLevel(statusBarStore);
+            statusBarStore.IsMicrophoneOn = false;
+            statusBarStore.IsTrackerOn = false;
+
+            sideBarStore.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(SideBarStore.CallStatus))
+                {
+                    statusBarStore.IsMicrophoneOn = sideBarStore.CallStatus is CallStatus.Live or CallStatus.Outgoing;
+                }
+            };
+
+            NetworkChange.NetworkAvailabilityChanged += (_, __) => UpdateConnectionLevel(statusBarStore);
+            NetworkChange.NetworkAddressChanged += (_, __) => UpdateConnectionLevel(statusBarStore);
+
             // Start the heartbeat background service
             _heartbeatService = _host.Services.GetRequiredService<HeartbeatBackgroundService>();
+            _heartbeatService.TrackingAvailabilityChanged += isTrackingOn => statusBarStore.IsTrackerOn = isTrackingOn;
             _heartbeatService.Start();
 
             ApplyDebugWindowSettings(mainWindow);
             mainWindow.Show();
             base.OnStartup(e);
+        }
+
+        private static void UpdateConnectionLevel(StatusBarStore statusBarStore)
+        {
+            NetworkInterface[] interfaces = NetworkInterface.GetAllNetworkInterfaces();
+            bool hasUpInterface = interfaces.Any(interfaceItem =>
+                interfaceItem.OperationalStatus == OperationalStatus.Up &&
+                interfaceItem.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
+                interfaceItem.NetworkInterfaceType != NetworkInterfaceType.Tunnel);
+
+            if (!hasUpInterface)
+            {
+                statusBarStore.ConnectionLevel = ConnectionLevel.None;
+                return;
+            }
+
+            bool hasWireless = interfaces.Any(interfaceItem =>
+                interfaceItem.OperationalStatus == OperationalStatus.Up &&
+                interfaceItem.NetworkInterfaceType is NetworkInterfaceType.Wireless80211);
+
+            statusBarStore.ConnectionLevel = hasWireless ? ConnectionLevel.High : ConnectionLevel.Medium;
         }
 
         private void ApplyDebugWindowSettings(Window window)

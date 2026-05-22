@@ -50,20 +50,26 @@
             </svgs:SvgViewbox>
         </Grid>
         <Grid HorizontalAlignment="Center" Width="128" Height="64">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Store.IsTrackingAvailable}" Value="False">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
             <Rectangle RadiusX="36" RadiusY="36">
                 <Rectangle.Style>
                     <Style TargetType="Rectangle">
                         <Setter Property="Fill" Value="{StaticResource BrushRed}"/>
-                        <Setter Property="Visibility" Value="Visible"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding Store.DrivingHours}" Value="{x:Static stores:DrivingHoursState.Normal}">
                                 <Setter Property="Fill" Value="{StaticResource BrushGreen}"/>
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Store.DrivingHours}" Value="{x:Static stores:DrivingHoursState.Warning}">
                                 <Setter Property="Fill" Value="{StaticResource BrushOrange}"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Store.IsTrackingAvailable}" Value="false">
-                                <Setter Property="Visibility" Value="Collapsed"/>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>

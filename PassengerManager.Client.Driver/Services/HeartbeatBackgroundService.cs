@@ -99,6 +99,7 @@ namespace PassengerManager.Client.Driver.Services
             }
 
             _cancellationTokenSource = new CancellationTokenSource();
+            TrackingAvailabilityChanged?.Invoke(true);
             _heartbeatTask = HeartbeatLoop(_cancellationTokenSource.Token);
 
             _logger.LogInformation("Heartbeat background service started");
@@ -131,6 +132,10 @@ namespace PassengerManager.Client.Driver.Services
             {
                 _logger.LogError(ex, "Error during heartbeat service shutdown");
             }
+            finally
+            {
+                TrackingAvailabilityChanged?.Invoke(false);
+            }
 
             _heartbeatTask = null;
         }
@@ -142,21 +147,16 @@ namespace PassengerManager.Client.Driver.Services
         /// </summary>
         private async Task HeartbeatLoop(CancellationToken cancellationToken)
         {
-            bool lastTrackingAvailable = false;
-
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
+                    // If we can execute the heartbeat collection path, the tracker should remain on.
+                    TrackingAvailabilityChanged?.Invoke(true);
+
                     // Always send heartbeat if hardware is logged in
                     if (_hardwareStore.IsLoggedIn)
                     {
-                        if (!lastTrackingAvailable)
-                        {
-                            lastTrackingAvailable = true;
-                            TrackingAvailabilityChanged?.Invoke(true);
-                        }
-
                         // Determine interval based on driver login status
                         bool isDriverLoggedIn = _driverAccountStore.IsLoggedIn;
                         bool isAppInForeground = IsApplicationInForeground();
@@ -203,12 +203,6 @@ namespace PassengerManager.Client.Driver.Services
                     }
                     else
                     {
-                        if (lastTrackingAvailable)
-                        {
-                            lastTrackingAvailable = false;
-                            TrackingAvailabilityChanged?.Invoke(false);
-                        }
-
                         // Hardware not logged in, wait longer before checking again
                         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                     }
@@ -221,6 +215,7 @@ namespace PassengerManager.Client.Driver.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error in heartbeat loop");
+                    TrackingAvailabilityChanged?.Invoke(false);
                     // Continue on error, wait a bit before retrying
                     await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
                 }

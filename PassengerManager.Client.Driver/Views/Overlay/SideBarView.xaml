@@ -5,17 +5,117 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:PassengerManager.Client.Driver.Views.Overlay"
              xmlns:controls="clr-namespace:PassengerManager.Client.Driver.Controls"
-             mc:Ignorable="d">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+             xmlns:vm="clr-namespace:PassengerManager.Client.Driver.ViewModels.Overlay"
+             xmlns:stores="clr-namespace:PassengerManager.Client.Driver.Stores"
+             xmlns:svgs="http://sharpvectors.codeplex.com/svgc/"
+             mc:Ignorable="d" Width="208" Height="1080"
+             d:DesignHeight="1080" d:DesignWidth="208" d:DataContext="{d:DesignInstance Type=vm:SideBarViewModel, IsDesignTimeCreatable=False}">
+    
+    <UserControl.Resources>
+        <Style x:Key="NavButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"></Setter>
+            <Setter Property="BorderThickness" Value="0"></Setter>
+            <Setter Property="Height" Value="208"></Setter>
+            <Setter Property="Width" Value="208"></Setter>
+            <Setter Property="Opacity" Value="1.0"></Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"></ContentPresenter>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="{x:Static stores:SideBarButtonState.Selected}">
+                    <Setter Property="Background" Value="{StaticResource BrushBase}"></Setter>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="{x:Static stores:SideBarButtonState.Disabled}">
+                    <Setter Property="Opacity" Value="0.3"></Setter>
+                    <Setter Property="IsEnabled" Value="False"></Setter>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
 
-        <StackPanel Grid.Row="0">
+    <Border>
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource BrushBlueDark}"></Setter>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Store.IsOverlay}" Value="True">
+                        <Setter Property="Background" Value="Transparent"></Setter>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
 
-        </StackPanel>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+            </Grid.RowDefinitions>
 
-        <controls:HoldToActivateButton Grid.Row="1" Width="120" Height="120" Command="{Binding EmergencySosCommand}"/>
-    </Grid>
+            <StackPanel Grid.Row="0" Margin="0,0,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Visible"></Setter>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Store.IsOverlay}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed"></Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <Button Style="{StaticResource NavButtonStyle}" 
+                        Command="{Binding NavigateToMapCommand}" 
+                        Tag="{Binding Store.NavigationButtonState}">
+                    <svgs:SvgViewbox Source="/Resources/Icons/navigation-2 (1).svg" Width="128" Height="128"></svgs:SvgViewbox>
+                </Button>
+                <Button Style="{StaticResource NavButtonStyle}" 
+                        Command="{Binding NavigateToReportCommand}" 
+                        Tag="{Binding Store.ReportButtonState}">
+                    <svgs:SvgViewbox Source="/Resources/Icons/flag (1).svg" Width="128" Height="128"></svgs:SvgViewbox>
+                </Button>
+                <Button Command="{Binding CallDispatchCommand}" 
+                        Tag="{Binding Store.PhoneButtonState}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Store.CallStatus}" Value="{x:Static stores:CallStatus.Live}">
+                                    <Setter Property="Background" Value="{StaticResource BrushRed}"></Setter>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Store.CallStatus}" Value="{x:Static stores:CallStatus.Outgoing}">
+                                    <Setter Property="Background" Value="{StaticResource BrushOrange}"></Setter>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <svgs:SvgViewbox Width="128" Height="128">
+                        <svgs:SvgViewbox.Style>
+                            <Style TargetType="svgs:SvgViewbox">
+                                <Setter Property="Source" Value="/Resources/Icons/phone.svg"></Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Store.CallStatus}" Value="{x:Static stores:CallStatus.Live}">
+                                        <Setter Property="Source" Value="/Resources/Icons/phone-missed.svg"></Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Store.CallStatus}" Value="{x:Static stores:CallStatus.Outgoing}">
+                                        <Setter Property="Source" Value="/Resources/Icons/phone-outgoing.svg"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </svgs:SvgViewbox.Style>
+                    </svgs:SvgViewbox>
+                </Button>
+                <Button Style="{StaticResource NavButtonStyle}" 
+                        Command="{Binding NavigateToSettingsCommand}" 
+                        Tag="{Binding Store.SettingsButtonState}">
+                    <svgs:SvgViewbox Source="/Resources/Icons/settings (1).svg" Width="128" Height="128"></svgs:SvgViewbox>
+                </Button>
+            </StackPanel>
+            <controls:HoldToActivateButton Grid.Row="1" Width="128" Height="128" Margin="0,0,0,0" 
+                                           Command="{Binding InitiateEmergencyCommand}"></controls:HoldToActivateButton>
+        </Grid>
+    </Border>
 </UserControl>

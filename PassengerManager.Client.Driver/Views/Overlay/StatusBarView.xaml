@@ -5,8 +5,167 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:PassengerManager.Client.Driver.Views.Overlay"
              xmlns:controls="clr-namespace:PassengerManager.Client.Driver.Controls"
-             mc:Ignorable="d">
-    <Grid>
+             xmlns:stores="clr-namespace:PassengerManager.Client.Driver.Stores"
+             xmlns:vm="clr-namespace:PassengerManager.Client.Driver.ViewModels.Overlay"
+             xmlns:svgs="http://sharpvectors.codeplex.com/svgc/"
+             mc:Ignorable="d" Width="1760" Height="96" Background="Transparent" 
+             d:DesignHeight="96" d:DesignWidth="1760" d:DataContext="{d:DesignInstance Type=vm:StatusBarViewModel, IsDesignTimeCreatable=False}">
+    <Grid Background="Transparent">
+        <Grid HorizontalAlignment="Left" Width="64" Height="64">
+            <Ellipse>
+                <Ellipse.Style>
+                    <Style TargetType="Ellipse">
+                        <Setter Property="Fill" Value="{StaticResource BrushRed}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Store.ConnectionLevel}" Value="{x:Static stores:ConnectionLevel.High}">
+                                <Setter Property="Fill" Value="{StaticResource BrushGreen}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Store.ConnectionLevel}" Value="{x:Static stores:ConnectionLevel.Medium}">
+                                <Setter Property="Fill" Value="{StaticResource BrushGreen}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Store.ConnectionLevel}" Value="{x:Static stores:ConnectionLevel.Low}">
+                                <Setter Property="Fill" Value="{StaticResource BrushGreen}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Ellipse.Style>
+            </Ellipse>
+            <svgs:SvgViewbox Width="42" Height="42" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <svgs:SvgViewbox.Style>
+                    <Style TargetType="svgs:SvgViewbox">
+                        <Setter Property="Source" Value="/Resources/Icons/wifi-off.svg"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Store.ConnectionLevel}" Value="{x:Static stores:ConnectionLevel.High}">
+                                <Setter Property="Source" Value="/Resources/Icons/wifi.svg"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Store.ConnectionLevel}" Value="{x:Static stores:ConnectionLevel.Medium}">
+                                <Setter Property="Source" Value="/Resources/Icons/wifi-high.svg"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Store.ConnectionLevel}" Value="{x:Static stores:ConnectionLevel.Low}">
+                                <Setter Property="Source" Value="/Resources/Icons/wifi-low.svg"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </svgs:SvgViewbox.Style>
+            </svgs:SvgViewbox>
+        </Grid>
+        <Grid HorizontalAlignment="Center" Width="128" Height="64">
+            <Rectangle RadiusX="36" RadiusY="36">
+                <Rectangle.Style>
+                    <Style TargetType="Rectangle">
+                        <Setter Property="Fill" Value="{StaticResource BrushRed}"/>
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Store.DrivingHours}" Value="{x:Static stores:DrivingHoursState.Normal}">
+                                <Setter Property="Fill" Value="{StaticResource BrushGreen}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Store.DrivingHours}" Value="{x:Static stores:DrivingHoursState.Warning}">
+                                <Setter Property="Fill" Value="{StaticResource BrushOrange}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Store.IsTrackingAvailable}" Value="false">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Rectangle.Style>
+            </Rectangle>
 
+            <ContentControl>
+                <ContentControl.Style>
+                    <Style TargetType="ContentControl">
+                        <Setter Property="Content">
+                            <Setter.Value>
+                                <svgs:SvgViewbox Source="/Resources/Icons/clock-fading.svg" Width="42" Height="42" 
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Store.DrivingHours}" Value="{x:Static stores:DrivingHoursState.Normal}">
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <svgs:SvgViewbox Source="/Resources/Icons/clock.svg" Width="42" Height="42" 
+                                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Store.DrivingHours}" Value="{x:Static stores:DrivingHoursState.Warning}">
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <svgs:SvgViewbox Source="/Resources/Icons/clock-alert.svg" Width="42" Height="42"/>
+                                            <Canvas Width="8"/>
+                                            <TextBlock Text="{Binding Store.DrivingMinutesLeft}"
+                                                       Width="50"
+                                                       FontSize="36"
+                                                       Foreground="{StaticResource BrushGray}"
+                                                       VerticalAlignment="Center"
+                                                       TextAlignment="Left"/>
+                                        </StackPanel>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+            </ContentControl>
+        </Grid>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Height="64">
+            <Grid HorizontalAlignment="Right" Width="64" Height="64" Margin="0,0,8,0">
+                <Ellipse>
+                    <Ellipse.Style>
+                        <Style TargetType="Ellipse">
+                            <Setter Property="Fill" Value="{StaticResource BrushRed}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Store.IsMicrophoneOn}" Value="True">
+                                    <Setter Property="Fill" Value="{StaticResource BrushGreen}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Ellipse.Style>
+                </Ellipse>
+
+                <svgs:SvgViewbox Width="42" Height="42" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <svgs:SvgViewbox.Style>
+                        <Style TargetType="svgs:SvgViewbox">
+                            <Setter Property="Source" Value="/Resources/Icons/mic-off.svg"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Store.IsMicrophoneOn}" Value="True">
+                                    <Setter Property="Source" Value="/Resources/Icons/mic.svg"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </svgs:SvgViewbox.Style>
+                </svgs:SvgViewbox>
+            </Grid>
+
+            <Grid HorizontalAlignment="Right" Width="64" Height="64">
+                <Ellipse>
+                    <Ellipse.Style>
+                        <Style TargetType="Ellipse">
+                            <Setter Property="Fill" Value="{StaticResource BrushRed}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Store.IsTrackerOn}" Value="True">
+                                    <Setter Property="Fill" Value="{StaticResource BrushGreen}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Ellipse.Style>
+                </Ellipse>
+
+                <svgs:SvgViewbox Width="42" Height="42" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <svgs:SvgViewbox.Style>
+                        <Style TargetType="svgs:SvgViewbox">
+                            <Setter Property="Source" Value="/Resources/Icons/locate-off.svg"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Store.IsTrackerOn}" Value="True">
+                                    <Setter Property="Source" Value="/Resources/Icons/locate.svg"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </svgs:SvgViewbox.Style>
+                </svgs:SvgViewbox>
+            </Grid>
+        </StackPanel>
     </Grid>
 </UserControl>

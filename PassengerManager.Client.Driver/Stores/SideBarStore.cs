@@ -8,6 +8,12 @@ namespace PassengerManager.Client.Driver.Stores
     public partial class SideBarStore : ObservableObject
     {
         [ObservableProperty]
+        private bool _isEmergency = false;
+
+        [ObservableProperty]
+        private bool _isOverlay = false;
+
+        [ObservableProperty]
         private SideBarButtonState _navigationButtonState = SideBarButtonState.Disabled;
 
         [ObservableProperty]
@@ -24,8 +30,5 @@ namespace PassengerManager.Client.Driver.Stores
 
         [ObservableProperty]
         private SideBarButtonState _settingsButtonState = SideBarButtonState.Disabled;
-
-        [ObservableProperty]
-        private bool _isEmergency = false;
     }
 }

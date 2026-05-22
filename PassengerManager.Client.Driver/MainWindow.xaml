@@ -3,29 +3,88 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:viewmodels="clr-namespace:PassengerManager.Client.Driver.ViewModels"
-        xmlns:viewmodelsoverlay="clr-namespace:PassengerManager.Client.Driver.ViewModels.Overlay"
+        xmlns:vm="clr-namespace:PassengerManager.Client.Driver.ViewModels"
+        xmlns:vmoverlay="clr-namespace:PassengerManager.Client.Driver.ViewModels.Overlay"
         xmlns:views="clr-namespace:PassengerManager.Client.Driver.Views"
         xmlns:viewsoverlay="clr-namespace:PassengerManager.Client.Driver.Views.Overlay"
         xmlns:controls="clr-namespace:PassengerManager.Client.Driver.Controls"
+        xmlns:stores="clr-namespace:PassengerManager.Client.Driver.Stores"
         Title="Terminal"
         WindowState="Maximized"
         WindowStyle="None"
-        Background="#121212">
+        Background="#121212"
+        mc:Ignorable="d" d:DesignHeight="1080" d:DesignWidth="1920">
 
     <Window.Resources>
-        <DataTemplate DataType="{x:Type viewmodels:DriverLoginViewModel}">
+        <DataTemplate DataType="{x:Type vm:DriverLoginViewModel}">
             <views:DriverLoginView />
         </DataTemplate>
-        <DataTemplate DataType="{x:Type viewmodelsoverlay:SideBarViewModel}">
+        <DataTemplate DataType="{x:Type vmoverlay:SideBarViewModel}">
             <viewsoverlay:SideBarView />
         </DataTemplate>
-        <DataTemplate DataType="{x:Type viewmodelsoverlay:StatusBarViewModel}">
+        <DataTemplate DataType="{x:Type vmoverlay:StatusBarViewModel}">
             <viewsoverlay:StatusBarView/>
         </DataTemplate>
     </Window.Resources>
 
     <Grid>
-        <ContentControl />
+        <Border BorderThickness="8">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="BorderBrush" Value="Transparent"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding SideBarStore.IsEmergency}" Value="True">
+                            <Setter Property="BorderBrush" Value="{StaticResource BrushRed}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+        </Border>
+
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <ContentPresenter Content="{Binding DataContext.CurrentViewModel, RelativeSource={RelativeSource AncestorType=Window}}">
+                        <ContentPresenter.Style>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Grid.Column" Value="1"/>
+                                <Setter Property="Grid.ColumnSpan" Value="1"/>
+
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SideBarStore.IsOverlay}" Value="True">
+                                        <Setter Property="Grid.Column" Value="0"/>
+                                        <Setter Property="Grid.ColumnSpan" Value="2"/>
+                                    </DataTrigger>
+
+                                    <DataTrigger Binding="{Binding SideBarStore.IsOpen}" Value="False">
+                                        <Setter Property="Grid.Column" Value="0"/>
+                                        <Setter Property="Grid.ColumnSpan" Value="2"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ContentPresenter.Style>
+                    </ContentPresenter>
+
+                    <viewsoverlay:SideBarView Grid.Column="0" Panel.ZIndex="10">
+                        <viewsoverlay:SideBarView.Style>
+                            <Style TargetType="viewsoverlay:SideBarView">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SideBarStore.IsOverlay}" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </viewsoverlay:SideBarView.Style>
+                    </viewsoverlay:SideBarView>
+                </Grid>
+                <viewsoverlay:StatusBarView VerticalAlignment="Top" Panel.ZIndex="20"/>
+            </Grid>
+        </Viewbox>
     </Grid>
 </Window>

@@ -10,6 +10,48 @@
 
   <ItemGroup>
     <None Remove="Resources\driverlogin_bckg.png" />
+    <None Remove="Resources\Icons\accident.svg" />
+    <None Remove="Resources\Icons\bell %281%29.svg" />
+    <None Remove="Resources\Icons\bell-dot %281%29.svg" />
+    <None Remove="Resources\Icons\bell-dot.svg" />
+    <None Remove="Resources\Icons\bell.svg" />
+    <None Remove="Resources\Icons\clock-alert.svg" />
+    <None Remove="Resources\Icons\clock-fading.svg" />
+    <None Remove="Resources\Icons\clock.svg" />
+    <None Remove="Resources\Icons\construction.svg" />
+    <None Remove="Resources\Icons\demonstration.svg" />
+    <None Remove="Resources\Icons\flag %281%29.svg" />
+    <None Remove="Resources\Icons\flag.svg" />
+    <None Remove="Resources\Icons\locate-off.svg" />
+    <None Remove="Resources\Icons\locate.svg" />
+    <None Remove="Resources\Icons\log-out.svg" />
+    <None Remove="Resources\Icons\maintenance.svg" />
+    <None Remove="Resources\Icons\medical-emergency.svg" />
+    <None Remove="Resources\Icons\mic-off.svg" />
+    <None Remove="Resources\Icons\mic.svg" />
+    <None Remove="Resources\Icons\navigation-2 %281%29.svg" />
+    <None Remove="Resources\Icons\navigation-2.svg" />
+    <None Remove="Resources\Icons\other %281%29.svg" />
+    <None Remove="Resources\Icons\other.svg" />
+    <None Remove="Resources\Icons\phone-call.svg" />
+    <None Remove="Resources\Icons\phone-incoming.svg" />
+    <None Remove="Resources\Icons\phone-missed.svg" />
+    <None Remove="Resources\Icons\phone-outgoing.svg" />
+    <None Remove="Resources\Icons\phone.svg" />
+    <None Remove="Resources\Icons\police-activity.svg" />
+    <None Remove="Resources\Icons\route.svg" />
+    <None Remove="Resources\Icons\settings %281%29.svg" />
+    <None Remove="Resources\Icons\settings.svg" />
+    <None Remove="Resources\Icons\square-code.svg" />
+    <None Remove="Resources\Icons\undo.svg" />
+    <None Remove="Resources\Icons\weather.svg" />
+    <None Remove="Resources\Icons\wifi-cog.svg" />
+    <None Remove="Resources\Icons\wifi-high.svg" />
+    <None Remove="Resources\Icons\wifi-low.svg" />
+    <None Remove="Resources\Icons\wifi-off.svg" />
+    <None Remove="Resources\Icons\wifi.svg" />
+    <None Remove="Resources\Icons\x %281%29.svg" />
+    <None Remove="Resources\Icons\x.svg" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,6 +73,48 @@
     <Resource Include="Resources\driverlogin_bckg.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Resources\Icons\accident.svg" />
+    <Resource Include="Resources\Icons\bell (1).svg" />
+    <Resource Include="Resources\Icons\bell-dot (1).svg" />
+    <Resource Include="Resources\Icons\bell-dot.svg" />
+    <Resource Include="Resources\Icons\bell.svg" />
+    <Resource Include="Resources\Icons\clock-alert.svg" />
+    <Resource Include="Resources\Icons\clock-fading.svg" />
+    <Resource Include="Resources\Icons\clock.svg" />
+    <Resource Include="Resources\Icons\construction.svg" />
+    <Resource Include="Resources\Icons\demonstration.svg" />
+    <Resource Include="Resources\Icons\flag (1).svg" />
+    <Resource Include="Resources\Icons\flag.svg" />
+    <Resource Include="Resources\Icons\locate-off.svg" />
+    <Resource Include="Resources\Icons\locate.svg" />
+    <Resource Include="Resources\Icons\log-out.svg" />
+    <Resource Include="Resources\Icons\maintenance.svg" />
+    <Resource Include="Resources\Icons\medical-emergency.svg" />
+    <Resource Include="Resources\Icons\mic-off.svg" />
+    <Resource Include="Resources\Icons\mic.svg" />
+    <Resource Include="Resources\Icons\navigation-2 (1).svg" />
+    <Resource Include="Resources\Icons\navigation-2.svg" />
+    <Resource Include="Resources\Icons\other (1).svg" />
+    <Resource Include="Resources\Icons\other.svg" />
+    <Resource Include="Resources\Icons\phone-call.svg" />
+    <Resource Include="Resources\Icons\phone-incoming.svg" />
+    <Resource Include="Resources\Icons\phone-missed.svg" />
+    <Resource Include="Resources\Icons\phone-outgoing.svg" />
+    <Resource Include="Resources\Icons\phone.svg" />
+    <Resource Include="Resources\Icons\police-activity.svg" />
+    <Resource Include="Resources\Icons\route.svg" />
+    <Resource Include="Resources\Icons\settings (1).svg" />
+    <Resource Include="Resources\Icons\settings.svg" />
+    <Resource Include="Resources\Icons\square-code.svg" />
+    <Resource Include="Resources\Icons\undo.svg" />
+    <Resource Include="Resources\Icons\weather.svg" />
+    <Resource Include="Resources\Icons\wifi-cog.svg" />
+    <Resource Include="Resources\Icons\wifi-high.svg" />
+    <Resource Include="Resources\Icons\wifi-low.svg" />
+    <Resource Include="Resources\Icons\wifi-off.svg" />
+    <Resource Include="Resources\Icons\wifi.svg" />
+    <Resource Include="Resources\Icons\x (1).svg" />
+    <Resource Include="Resources\Icons\x.svg" />
   </ItemGroup>
 
   <ItemGroup>

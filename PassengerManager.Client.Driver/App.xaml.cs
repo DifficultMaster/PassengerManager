@@ -81,6 +81,8 @@ namespace PassengerManager.Client.Driver
                     services.AddSingleton<DriverAccountStore>();
                     services.AddSingleton<AccountStore>(provider => provider.GetRequiredService<DriverAccountStore>());
                     services.AddSingleton<HardwareAccountStore>();
+                    services.AddSingleton<SideBarStore>();
+                    services.AddSingleton<StatusBarStore>();
 
                     services.AddSingleton<HeartbeatBackgroundService>();
 

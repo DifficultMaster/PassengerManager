@@ -106,11 +106,11 @@ namespace PassengerManager.Client.Driver
             // Perform hardware login first to get the device token for telemetry
             await PerformHardwareLoginAsync();
 
-            INavigationService navigationService = _host.Services.GetRequiredService<INavigationService>();
-            navigationService.NavigateTo<DriverLoginViewModel>();
-
             MainWindow mainWindow = _host.Services.GetRequiredService<MainWindow>();
             mainWindow.DataContext = _host.Services.GetRequiredService<MainViewModel>();
+
+            INavigationService navigationService = _host.Services.GetRequiredService<INavigationService>();
+            navigationService.NavigateTo<DriverLoginViewModel>();
 
             StatusBarStore statusBarStore = _host.Services.GetRequiredService<StatusBarStore>();
             SideBarStore sideBarStore = _host.Services.GetRequiredService<SideBarStore>();

@@ -71,13 +71,28 @@
                             <Style TargetType="viewsoverlay:SideBarView">
                                 <Setter Property="Visibility" Value="Visible"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding DataContext.SideBarStore.IsOverlay, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                    <DataTrigger Binding="{Binding DataContext.SideBarStore.IsOverlay, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </viewsoverlay:SideBarView.Style>
                     </viewsoverlay:SideBarView>
+
+                    <controls:HoldToActivateButton Grid.Column="0" Grid.RowSpan="2" Width="128" Height="128"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16"
+                                                   Command="{Binding DataContext.SideBarViewModel.InitiateEmergencyCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                        <controls:HoldToActivateButton.Style>
+                            <Style TargetType="controls:HoldToActivateButton">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DataContext.SideBarStore.IsOverlay, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </controls:HoldToActivateButton.Style>
+                    </controls:HoldToActivateButton>
                 </Grid>
                 <viewsoverlay:StatusBarView VerticalAlignment="Top" Panel.ZIndex="20"
                                             DataContext="{Binding DataContext.StatusBarViewModel, RelativeSource={RelativeSource AncestorType=Window}}"/>

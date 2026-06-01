@@ -13,27 +13,27 @@
     
     <UserControl.Resources>
         <Style x:Key="NavButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"></Setter>
-            <Setter Property="BorderThickness" Value="0"></Setter>
-            <Setter Property="Height" Value="208"></Setter>
-            <Setter Property="Width" Value="208"></Setter>
-            <Setter Property="Opacity" Value="1.0"></Setter>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Height" Value="208"/>
+            <Setter Property="Width" Value="208"/>
+            <Setter Property="Opacity" Value="1.0"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"></ContentPresenter>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="{x:Static stores:SideBarButtonState.Selected}">
-                    <Setter Property="Background" Value="{StaticResource BrushBase}"></Setter>
+                    <Setter Property="Background" Value="{StaticResource BrushBase}"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="{x:Static stores:SideBarButtonState.Disabled}">
-                    <Setter Property="Opacity" Value="0.3"></Setter>
-                    <Setter Property="IsEnabled" Value="False"></Setter>
+                    <Setter Property="Opacity" Value="0.3"/>
+                    <Setter Property="IsEnabled" Value="False"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -42,10 +42,10 @@
     <Border>
         <Border.Style>
             <Style TargetType="Border">
-                <Setter Property="Background" Value="{StaticResource BrushBlueDark}"></Setter>
+                <Setter Property="Background" Value="{StaticResource BrushBlueDark}"/>
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding Store.IsOverlay}" Value="True">
-                        <Setter Property="Background" Value="Transparent"></Setter>
+                        <Setter Property="Background" Value="Transparent"/>
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
@@ -53,17 +53,16 @@
 
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="*"></RowDefinition>
-                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0" Margin="0,0,0,0">
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
-                        <Setter Property="Visibility" Value="Visible"></Setter>
+                        <Setter Property="Visibility" Value="Visible"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding Store.IsOverlay}" Value="True">
-                                <Setter Property="Visibility" Value="Collapsed"></Setter>
+                                <Setter Property="Visibility" Value="Collapsed"/>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -71,12 +70,12 @@
                 <Button Style="{StaticResource NavButtonStyle}" 
                         Command="{Binding NavigateToMapCommand}" 
                         Tag="{Binding Store.NavigationButtonState}">
-                    <svgs:SvgViewbox Source="/Resources/Icons/navigation-2 (1).svg" Width="128" Height="128"></svgs:SvgViewbox>
+                    <svgs:SvgViewbox Source="/Resources/Icons/navigation-2 (1).svg" Width="128" Height="128"/>
                 </Button>
                 <Button Style="{StaticResource NavButtonStyle}" 
                         Command="{Binding NavigateToReportCommand}" 
                         Tag="{Binding Store.ReportButtonState}">
-                    <svgs:SvgViewbox Source="/Resources/Icons/flag (1).svg" Width="128" Height="128"></svgs:SvgViewbox>
+                    <svgs:SvgViewbox Source="/Resources/Icons/flag (1).svg" Width="128" Height="128"/>
                 </Button>
                 <Button Command="{Binding CallDispatchCommand}" 
                         Tag="{Binding Store.PhoneButtonState}">
@@ -84,10 +83,10 @@
                         <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Store.CallStatus}" Value="{x:Static stores:CallStatus.Live}">
-                                    <Setter Property="Background" Value="{StaticResource BrushRed}"></Setter>
+                                    <Setter Property="Background" Value="{StaticResource BrushRed}"/>
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Store.CallStatus}" Value="{x:Static stores:CallStatus.Outgoing}">
-                                    <Setter Property="Background" Value="{StaticResource BrushOrange}"></Setter>
+                                    <Setter Property="Background" Value="{StaticResource BrushOrange}"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -95,13 +94,13 @@
                     <svgs:SvgViewbox Width="128" Height="128">
                         <svgs:SvgViewbox.Style>
                             <Style TargetType="svgs:SvgViewbox">
-                                <Setter Property="Source" Value="/Resources/Icons/phone.svg"></Setter>
+                                <Setter Property="Source" Value="/Resources/Icons/phone.svg"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding Store.CallStatus}" Value="{x:Static stores:CallStatus.Live}">
-                                        <Setter Property="Source" Value="/Resources/Icons/phone-missed.svg"></Setter>
+                                        <Setter Property="Source" Value="/Resources/Icons/phone-missed.svg"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Store.CallStatus}" Value="{x:Static stores:CallStatus.Outgoing}">
-                                        <Setter Property="Source" Value="/Resources/Icons/phone-outgoing.svg"></Setter>
+                                        <Setter Property="Source" Value="/Resources/Icons/phone-outgoing.svg"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -111,11 +110,9 @@
                 <Button Style="{StaticResource NavButtonStyle}" 
                         Command="{Binding NavigateToSettingsCommand}" 
                         Tag="{Binding Store.SettingsButtonState}">
-                    <svgs:SvgViewbox Source="/Resources/Icons/settings (1).svg" Width="128" Height="128"></svgs:SvgViewbox>
+                    <svgs:SvgViewbox Source="/Resources/Icons/settings (1).svg" Width="128" Height="128"/>
                 </Button>
             </StackPanel>
-            <controls:HoldToActivateButton Grid.Row="1" Width="128" Height="128" Margin="0,0,0,0" 
-                                           Command="{Binding InitiateEmergencyCommand}"></controls:HoldToActivateButton>
         </Grid>
     </Border>
 </UserControl>

@@ -34,11 +34,18 @@ namespace PassengerManager.Client.Driver.ViewModels
             _logger = logger;
 
             _navigationStore.CurrentViewModelChanged += OnCurrentViewModelChanged;
+            UpdateSidebarMode();
         }
 
         private void OnCurrentViewModelChanged()
         {
             OnPropertyChanged(nameof(CurrentViewModel));
+            UpdateSidebarMode();
+        }
+
+        private void UpdateSidebarMode()
+        {
+            SideBarStore.IsOverlay = CurrentViewModel is DriverLoginViewModel;
         }
     }
 }

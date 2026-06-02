@@ -79,6 +79,21 @@
                         </viewsoverlay:SideBarView.Style>
                     </viewsoverlay:SideBarView>
 
+                    <viewsoverlay:SideBarView Grid.ColumnSpan="2" Panel.ZIndex="15"
+                                              HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                                              DataContext="{Binding DataContext.SideBarViewModel, RelativeSource={RelativeSource AncestorType=Window}}">
+                        <viewsoverlay:SideBarView.Style>
+                            <Style TargetType="viewsoverlay:SideBarView">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DataContext.SideBarStore.IsOverlay, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </viewsoverlay:SideBarView.Style>
+                    </viewsoverlay:SideBarView>
+
                     <controls:HoldToActivateButton Grid.Column="0" Grid.RowSpan="2" Width="128" Height="128"
                                                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16"
                                                    Command="{Binding DataContext.SideBarViewModel.InitiateEmergencyCommand, RelativeSource={RelativeSource AncestorType=Window}}">

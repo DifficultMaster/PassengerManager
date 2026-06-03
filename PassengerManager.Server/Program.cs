@@ -64,7 +64,7 @@ namespace PassengerManager.Server
 
                         new User
                         {
-                            Username = "0001",
+                            Username = "driver_user",
                             FullName = "Driver",
                             PasswordHash = PasswordHandler.GetHashedPassword("01234567"),
                             RoleId = 3,

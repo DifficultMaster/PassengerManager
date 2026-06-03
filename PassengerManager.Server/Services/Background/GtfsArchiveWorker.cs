@@ -86,7 +86,13 @@ namespace PassengerManager.Server.Services.Background
             using IServiceScope scope = _serviceProvider.CreateScope();
             PassengerManagerContext context = scope.ServiceProvider.GetRequiredService<PassengerManagerContext>();
 
+            // Extract distinct constraints
             List<string> incomingVehicleIds = batch.Select(b => b.VehicleId).Distinct().ToList();
+            List<string> incomingPlates = batch
+                .Where(b => !string.IsNullOrWhiteSpace(b.LicensePlate))
+                .Select(b => b.LicensePlate!)
+                .Distinct()
+                .ToList();
             List<string> incomingRouteIds = batch
                 .Where(b => !string.IsNullOrWhiteSpace(b.RouteId))
                 .Select(b => b.RouteId!)
@@ -98,37 +104,68 @@ namespace PassengerManager.Server.Services.Background
                 .Select(r => r.RouteId)
                 .ToHashSetAsync(token);
 
-            Dictionary<string, Shared.Models.Vehicle> existingVehicles = await context.Vehicles
-                .Where(v => incomingVehicleIds.Contains(v.VehicleId))
-                .ToDictionaryAsync(v => v.VehicleId, token);
+            // Fetch existing vehicles by ID OR License Plate to prevent unique constraint violations
+            List<Shared.Models.Vehicle> existingVehiclesList = await context.Vehicles
+                .Where(v => incomingVehicleIds.Contains(v.VehicleId) ||
+                            (!string.IsNullOrEmpty(v.LicensePlate) && incomingPlates.Contains(v.LicensePlate)))
+                .ToListAsync(token);
+
+            Dictionary<string, Shared.Models.Vehicle> existingVehiclesById = existingVehiclesList
+                .GroupBy(v => v.VehicleId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            // Keep a running tally of plates that are known to be taken so they aren't duplicated
+            HashSet<string> takenLicensePlates = existingVehiclesList
+                .Where(v => !string.IsNullOrEmpty(v.LicensePlate))
+                .Select(v => v.LicensePlate!)
+                .ToHashSet();
 
             List<Shared.Models.Vehicle> newVehicles = new List<PassengerManager.Shared.Models.Vehicle>();
             List<Shared.Models.Vehicle> vehiclesToUpdate = new List<PassengerManager.Shared.Models.Vehicle>();
 
-            foreach (VehiclePositionDto dto in batch)
+            // Group by VehicleId to prevent in-batch duplicates (taking the latest update)
+            var uniqueVehiclesInBatch = batch
+                .GroupBy(b => b.VehicleId)
+                .Select(g => g.Last())
+                .ToList();
+
+            foreach (VehiclePositionDto dto in uniqueVehiclesInBatch)
             {
-                if (existingVehicles.TryGetValue(dto.VehicleId, out Shared.Models.Vehicle? existingVehicle))
+                if (existingVehiclesById.TryGetValue(dto.VehicleId, out Shared.Models.Vehicle? existingVehicle))
                 {
-                    if (!string.IsNullOrEmpty(dto.LicensePlate) && existingVehicle.LicensePlate != dto.LicensePlate)
+                    // Update plate only if it changed AND it isn't already taken by another vehicle
+                    if (!string.IsNullOrEmpty(dto.LicensePlate) &&
+                        existingVehicle.LicensePlate != dto.LicensePlate &&
+                        !takenLicensePlates.Contains(dto.LicensePlate))
                     {
                         existingVehicle.LicensePlate = dto.LicensePlate;
-                        if (!vehiclesToUpdate.Contains(existingVehicle)) 
+                        takenLicensePlates.Add(dto.LicensePlate); // Mark as taken
+
+                        if (!vehiclesToUpdate.Contains(existingVehicle))
                             vehiclesToUpdate.Add(existingVehicle);
                     }
                 }
                 else
                 {
+                    // Brand new vehicle. Ensure we don't assign a taken license plate.
+                    string? safeLicensePlate = null;
+                    if (!string.IsNullOrEmpty(dto.LicensePlate) && !takenLicensePlates.Contains(dto.LicensePlate))
+                    {
+                        safeLicensePlate = dto.LicensePlate;
+                        takenLicensePlates.Add(safeLicensePlate); // Mark as taken
+                    }
+
                     Shared.Models.Vehicle newVehicle = new PassengerManager.Shared.Models.Vehicle
                     {
                         VehicleId = dto.VehicleId,
-                        LicensePlate = dto.LicensePlate
+                        LicensePlate = safeLicensePlate // Will be null if plate was already taken, preventing crash
                     };
 
                     newVehicles.Add(newVehicle);
-                    existingVehicles[dto.VehicleId] = newVehicle;
+                    existingVehiclesById[dto.VehicleId] = newVehicle;
                 }
             }
-
+         
             List<Shared.Models.Telemetry> newTelemetries = batch.Select(dto => new PassengerManager.Shared.Models.Telemetry
             {
                 VehicleId = dto.VehicleId,
@@ -148,14 +185,14 @@ namespace PassengerManager.Server.Services.Background
                 OccupancyStatus = dto.OccupancyStatus,
                 Timestamp = dto.Timestamp
             }).ToList();
-
+            
             bool autoDetectChanges = context.ChangeTracker.AutoDetectChangesEnabled;
             context.ChangeTracker.AutoDetectChangesEnabled = false;
 
             using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, token);
             try
             {
-                if (newVehicles.Any()) 
+                if (newVehicles.Any())
                     await context.Vehicles.AddRangeAsync(newVehicles, token);
 
                 foreach (Shared.Models.Vehicle vehicle in vehiclesToUpdate)
@@ -163,7 +200,7 @@ namespace PassengerManager.Server.Services.Background
                     context.Entry(vehicle).Property(v => v.LicensePlate).IsModified = true;
                 }
 
-                if (newTelemetries.Any()) 
+                if (newTelemetries.Any())
                     await context.Telemetries.AddRangeAsync(newTelemetries, token);
 
                 await context.SaveChangesAsync(token);

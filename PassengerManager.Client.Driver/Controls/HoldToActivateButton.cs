@@ -90,11 +90,6 @@ namespace PassengerManager.Client.Driver.Controls
 
         private void CancelHold()
         {
-            if (!_isHolding)
-            {
-                return;
-            }
-
             _isHolding = false;
             _timer.Stop();
             HoldProgress = 0.0;
@@ -115,9 +110,8 @@ namespace PassengerManager.Client.Driver.Controls
 
             if (progress >= 1.0)
             {
-                _timer.Stop();
-                _isHolding = false;
-
+                CancelHold();
+                
                 if (Command?.CanExecute(CommandParameter) == true)
                 {
                     Command.Execute(CommandParameter);

@@ -42,36 +42,6 @@ namespace PassengerManager.Server
 
                 if (!context.Users.Any())
                 {
-                    List<Shared.Models.User> users = new List<User>
-                    {
-                        new User
-                        {
-                            Username = "admin_user",
-                            FullName = "Administrator",
-                            PasswordHash = PasswordHandler.GetHashedPassword("admin_user"),
-                            RoleId = 1,
-                            CreatedAt = DateTime.UtcNow
-                        },
-
-                        new User
-                        {
-                            Username = "dispatcher_user",
-                            FullName = "Dispatcher",
-                            PasswordHash = PasswordHandler.GetHashedPassword("dispatcher_user"),
-                            RoleId = 2,
-                            CreatedAt = DateTime.UtcNow
-                        },
-
-                        new User
-                        {
-                            Username = "driver_user",
-                            FullName = "Driver",
-                            PasswordHash = PasswordHandler.GetHashedPassword("01234567"),
-                            RoleId = 3,
-                            CreatedAt = DateTime.UtcNow
-                        }
-                    };
-
                     // for debug testing only, remove on production
                     if (!context.Vehicles.Any())
                     {
@@ -85,8 +55,41 @@ namespace PassengerManager.Server
                     }
                     //
 
-                    context.Users.AddRange(users);
-                    context.SaveChanges();                    
+                    Shared.Models.User driver = new User
+                    {
+                        Username = "driver_user",
+                        FullName = "Driver",
+                        PasswordHash = PasswordHandler.GetHashedPassword("01234567"),
+                        RoleId = 3,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    context.Users.Add(driver);
+                    context.SaveChanges();
+
+                    Shared.Models.User dispatcher = new User
+                    {
+                        Username = "dispatcher_user",
+                        FullName = "Dispatcher",
+                        PasswordHash = PasswordHandler.GetHashedPassword("dispatcher_user"),
+                        RoleId = 2,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    context.Users.Add(dispatcher);
+                    context.SaveChanges();
+
+                    Shared.Models.User administrator = new User
+                    {
+                        Username = "admin_user",
+                        FullName = "Administrator",
+                        PasswordHash = PasswordHandler.GetHashedPassword("admin_user"),
+                        RoleId = 1,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    context.Users.Add(administrator);
+                    context.SaveChanges();
                 }
             }
         }

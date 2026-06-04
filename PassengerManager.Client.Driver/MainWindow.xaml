@@ -13,7 +13,8 @@
         WindowState="Maximized"
         WindowStyle="None"
         Background="#121212"
-        mc:Ignorable="d" d:DesignHeight="1080" d:DesignWidth="1920">
+        mc:Ignorable="d" d:DesignHeight="1080" d:DesignWidth="1920"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel, IsDesignTimeCreatable=False}">
 
     <Window.Resources>
         <ResourceDictionary>
@@ -100,6 +101,7 @@
                     </viewsoverlay:SideBarView>
 
                     <controls:HoldToActivateButton Grid.Column="0" Grid.RowSpan="2" 
+                                                   Panel.ZIndex="30"
                                                    Width="128" Height="128" FontSize="56"
                                                    Content="SOS"
                                                    HoldDuration="0:0:3"

@@ -16,9 +16,6 @@ namespace PassengerManager.Client.Driver.Controls
             DependencyProperty.Register(nameof(HoldProgress), typeof(double), typeof(HoldToActivateButton),
                 new PropertyMetadata(0.0));
 
-        public static readonly DependencyProperty HoldCompletedCommandProperty =
-            DependencyProperty.Register(nameof(HoldCompletedCommand), typeof(ICommand), typeof(HoldToActivateButton));
-
         public TimeSpan HoldDuration
         {
             get => (TimeSpan)GetValue(HoldDurationProperty);
@@ -29,12 +26,6 @@ namespace PassengerManager.Client.Driver.Controls
         {
             get => (double)GetValue(HoldProgressProperty);
             private set => SetValue(HoldProgressProperty, value);
-        }
-
-        public ICommand? HoldCompletedCommand
-        {
-            get => (ICommand?)GetValue(HoldCompletedCommandProperty);
-            set => SetValue(HoldCompletedCommandProperty, value);
         }
 
         private readonly DispatcherTimer _timer;
@@ -124,9 +115,9 @@ namespace PassengerManager.Client.Driver.Controls
                 _timer.Stop();
                 _isHolding = false;
 
-                if (HoldCompletedCommand?.CanExecute(null) == true)
+                if (Command?.CanExecute(CommandParameter) == true)
                 {
-                    HoldCompletedCommand.Execute(null);
+                    Command.Execute(CommandParameter);
                 }
             }
         }

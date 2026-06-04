@@ -16,15 +16,20 @@
         mc:Ignorable="d" d:DesignHeight="1080" d:DesignWidth="1920">
 
     <Window.Resources>
-        <DataTemplate DataType="{x:Type vm:DriverLoginViewModel}">
-            <views:DriverLoginView />
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vmoverlay:SideBarViewModel}">
-            <viewsoverlay:SideBarView />
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vmoverlay:StatusBarViewModel}">
-            <viewsoverlay:StatusBarView/>
-        </DataTemplate>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Styles/OverlayStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <DataTemplate DataType="{x:Type vm:DriverLoginViewModel}">
+                <views:DriverLoginView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vmoverlay:SideBarViewModel}">
+                <viewsoverlay:SideBarView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vmoverlay:StatusBarViewModel}">
+                <viewsoverlay:StatusBarView/>
+            </DataTemplate>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid>
@@ -94,11 +99,14 @@
                         </viewsoverlay:SideBarView.Style>
                     </viewsoverlay:SideBarView>
 
-                    <controls:HoldToActivateButton Grid.Column="0" Grid.RowSpan="2" Width="128" Height="128"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16"
+                    <controls:HoldToActivateButton Grid.Column="0" Grid.RowSpan="2" 
+                                                   Width="128" Height="128" FontSize="56"
+                                                   Content="SOS"
+                                                   HoldDuration="0:0:3"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="40,0,0,40"
                                                    Command="{Binding DataContext.SideBarViewModel.InitiateEmergencyCommand, RelativeSource={RelativeSource AncestorType=Window}}">
                         <controls:HoldToActivateButton.Style>
-                            <Style TargetType="controls:HoldToActivateButton">
+                            <Style TargetType="controls:HoldToActivateButton" BasedOn="{StaticResource SosCircularStyle}">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding DataContext.SideBarStore.IsOverlay, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">

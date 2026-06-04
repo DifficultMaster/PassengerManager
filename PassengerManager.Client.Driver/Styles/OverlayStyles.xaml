@@ -2,46 +2,47 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:controls="clr-namespace:PassengerManager.Client.Driver.Controls">
 
-    <Style TargetType="controls:HoldToActivateButton" x:Key="SosButtonStyle" BasedOn="{StaticResource NumpadButtonStyle}">
+    <Style x:Key="SosCircularStyle" TargetType="{x:Type controls:HoldToActivateButton}">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{StaticResource BrushWhite}"/>
-        <Setter Property="FontSize" Value="56"/>
-        <Setter Property="FontFamily" Value="Noto Sans JP"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BrushRed}"/>
+        <Setter Property="BorderThickness" Value="6"/>
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="Width" Value="120"/>
-        <Setter Property="Height" Value="120"/>
+        <Setter Property="FontSize" Value="56"/>
+        <Setter Property="Width" Value="80"/>
+        <Setter Property="Height" Value="80"/>
         <Setter Property="Cursor" Value="Hand"/>
+
         <Setter Property="Template">
             <Setter.Value>
-                <ControlTemplate TargetType="controls:HoldToActivateButton">
-                    <Grid>
-                        <Border Background="Transparent"
-                                CornerRadius="70"
-                                BorderBrush="{StaticResource BrushRed}"
-                                BorderThickness="6"
-                                Margin="-6"/>
-                        <Grid ClipToBounds="True">
-                            <Border CornerRadius="70" ClipToBounds="True">
-                                <Rectangle Fill="{StaticResource BrushRed}"
-                                           VerticalAlignment="Bottom"
-                                           RenderTransformOrigin="0.5,1">
-                                    <Rectangle.RenderTransform>
-                                        <ScaleTransform ScaleX="1"
-                                                        ScaleY="{Binding HoldProgress, RelativeSource={RelativeSource TemplatedParent}}" />
-                                    </Rectangle.RenderTransform>
-                                </Rectangle>
-                            </Border>
-                        </Grid>
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <ControlTemplate TargetType="{x:Type controls:HoldToActivateButton}">
+                    <Grid Background="Transparent">
+                        <Ellipse Fill="{TemplateBinding Background}"
+                             Stroke="{TemplateBinding BorderBrush}"
+                             StrokeThickness="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=BorderThickness.Left}"
+                             Margin="-3"/>
+
+                        <Ellipse Fill="{TemplateBinding BorderBrush}"
+                             Opacity="0.5"
+                             RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.RenderTransform>
+                                <ScaleTransform ScaleX="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=HoldProgress}"
+                                            ScaleY="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=HoldProgress}"/>
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+
+                        <ContentPresenter HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
                     </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Opacity" Value="0.8"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-        <Style.Triggers>
-            <Trigger Property="IsEnabled" Value="False">
-                <Setter Property="Opacity" Value="0.5"/>
-            </Trigger>
-        </Style.Triggers>
     </Style>
 
 </ResourceDictionary>

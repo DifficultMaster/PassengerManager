@@ -12,6 +12,7 @@ namespace PassengerManager.Server.Models
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json", optional: false)
                 .AddJsonFile("appsettings.Development.json", optional: true)
+                .AddUserSecrets<Program>()
                 .AddEnvironmentVariables()
                 .Build();
 

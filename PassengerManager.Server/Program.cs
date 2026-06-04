@@ -72,6 +72,19 @@ namespace PassengerManager.Server
                         }
                     };
 
+                    // for debug testing only, remove on production
+                    if (!context.Vehicles.Any())
+                    {
+                        Shared.Models.Vehicle vehicle = new Vehicle
+                        {
+                            VehicleId = "1099",
+                            HardwareHash = "DEFAULT_HARDWARE_HASH"
+                        };
+
+                        context.Vehicles.Add(vehicle);
+                    }
+                    //
+
                     context.Users.AddRange(users);
                     context.SaveChanges();                    
                 }

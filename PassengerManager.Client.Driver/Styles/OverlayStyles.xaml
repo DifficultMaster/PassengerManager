@@ -23,7 +23,6 @@
                              Margin="-3"/>
 
                         <Ellipse Fill="{TemplateBinding BorderBrush}"
-                             Opacity="0.5"
                              RenderTransformOrigin="0.5,0.5">
                             <Ellipse.RenderTransform>
                                 <ScaleTransform ScaleX="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=HoldProgress}"

@@ -34,7 +34,10 @@ namespace PassengerManager.Client.Driver.Controls
 
         public HoldToActivateButton()
         {
-            _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
+            _timer = new DispatcherTimer(DispatcherPriority.Render)
+            {
+                Interval = TimeSpan.FromMilliseconds(16)
+            };
             _timer.Tick += OnTimerTick;
         }
 

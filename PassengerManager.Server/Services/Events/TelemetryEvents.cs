@@ -9,16 +9,18 @@
             double? Bearing,
             double? Speed,
             double? Odometer,
-            string? AgencyId = null            
+            string? AgencyId,
+            string? RouteId,
+            string? TripId
             );
 
         public sealed record StatusReceived(
             string VehicleId,
+            string? AgencyId,
             int? CurrentStatus = null,
             int? CurrentStopSequence = null,
             int? CongestionLevel = null,
-            int? OccupancyStatus = null,
-            string? AgencyId = null
+            int? OccupancyStatus = null
             );
     }
 }

@@ -83,9 +83,13 @@ namespace PassengerManager.Server.Services.Background
                 try
                 {
                     string json = JsonSerializer.Serialize(dto);
-                    await db.StringSetAsync($"vehicle:{dto.VehicleId}", json, TimeSpan.FromSeconds(_scaleSettings.RedisTtlSeconds), flags: CommandFlags.FireAndForget);
+                    await db.StringSetAsync($"vehicle:{dto.VehicleId}", json,
+                        TimeSpan.FromSeconds(_scaleSettings.RedisTtlSeconds), flags: CommandFlags.FireAndForget);
                 }
-                catch (RedisConnectionException) { }
+                catch (RedisConnectionException e)
+                {
+                    _logger.LogWarning($"Failed to connect to Redis: {e.Message}");
+                }
                 
                 await _channels.VehicleChannel.Writer.WriteAsync(dto, token);
             }

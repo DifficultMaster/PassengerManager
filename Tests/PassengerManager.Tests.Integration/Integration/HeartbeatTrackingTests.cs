@@ -1,9 +1,12 @@
-using PassengerManager.Client.Driver.Services;
-using PassengerManager.Client.Driver.Stores;
-using PassengerManager.Client.Core.Services.Interfaces;
-using PassengerManager.Client.Core.Stores;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using PassengerManager.Client.Core.DTOs;
+using PassengerManager.Client.Core.Services.Interfaces;
+using PassengerManager.Client.Core.Stores;
+using PassengerManager.Client.Driver.Services;
+using PassengerManager.Client.Driver.Stores;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace PassengerManager.Tests.Integration.Integration;
 
@@ -13,6 +16,7 @@ public class HeartbeatTrackingTests
     public async Task TrackingAvailabilityChangesWhenServiceStartsAndStops()
     {
         TestTelemetryService telemetryService = new();
+        TestLocationProvider locationProvider = new(); 
         HardwareAccountStore hardwareStore = new();
         DriverAccountStore driverStore = new();
         SideBarStore sideBarStore = new();
@@ -26,6 +30,7 @@ public class HeartbeatTrackingTests
 
         HeartbeatBackgroundService service = new(
             telemetryService,
+            locationProvider,
             hardwareStore,
             driverStore,
             sideBarStore,
@@ -45,6 +50,16 @@ public class HeartbeatTrackingTests
         await service.StopAsync();
 
         Assert.That(tracking, Is.False);
+    }
+
+    // Mock Location Provider for the test
+    private sealed class TestLocationProvider : ILocationProvider
+    {
+        public Task<GeoLocation> GetCurrentLocationAsync()
+        {
+            // Returns a static dummy location instantly for the test
+            return Task.FromResult(new GeoLocation(50.4501, 30.5234, 40.0, 0.0, 15000.0));
+        }
     }
 
     private sealed class TestTelemetryService : ITelemetryService

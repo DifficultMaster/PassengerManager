@@ -40,7 +40,9 @@ namespace PassengerManager.Server.Services
                         Bearing: request.Bearing,
                         Speed: request.Speed,
                         Odometer: request.Odometer,
-                        AgencyId: user.FindFirst("AgencyId")?.Value),
+                        AgencyId: user.FindFirst("AgencyId")?.Value,
+                        RouteId: string.IsNullOrWhiteSpace(request.RouteId) ? null : request.RouteId,
+                        TripId: string.IsNullOrWhiteSpace(request.TripId) ? null : request.TripId),
                     "Telemetry.HeartbeatReceived",
                     context.CancellationToken
                     );

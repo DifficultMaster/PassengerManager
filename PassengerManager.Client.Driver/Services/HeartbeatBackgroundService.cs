@@ -18,10 +18,12 @@ namespace PassengerManager.Client.Driver.Services
     /// Heartbeat states:
     /// - Active (driver logged in): Sends at ActiveHeartbeatIntervalSeconds (e.g., 5s)
     /// - Idle (hardware logged in only): Sends at IdleHeartbeatIntervalSeconds (e.g., 30s)
+    /// - Emergency: Sends at EmergencyHeartbeatIntervalSeconds (e.g., 1s)
     /// </summary>
-    public class HeartbeatBackgroundService : IDisposable
+    public class HeartbeatBackgroundService
     {
         private readonly ITelemetryService _telemetryService;
+        private readonly ILocationProvider _locationProvider;
         private readonly HardwareAccountStore _hardwareStore;
         private readonly DriverAccountStore _driverAccountStore;
         private readonly SideBarStore _sideBarStore;
@@ -38,18 +40,11 @@ namespace PassengerManager.Client.Driver.Services
         private int _emergencyHeartbeatIntervalSeconds;
         private string _vehicleId;
 
-        // Mock GPS location (would be replaced with actual GPS in production)
-        private double _latitude = 50.4501;
-        private double _longitude = 30.5234;
-        private double _bearing = 0.0;
-        private double _speed = 0.0;
-        private double _odometer = 0.0;
-
         public event Action<bool>? TrackingAvailabilityChanged;
-        private DateTime _lastLocationUpdateUtc = DateTime.MinValue;
 
         public HeartbeatBackgroundService(
             ITelemetryService telemetryService,
+            ILocationProvider locationProvider,
             HardwareAccountStore hardwareStore,
             DriverAccountStore driverAccountStore,
             SideBarStore sideBarStore,
@@ -57,6 +52,7 @@ namespace PassengerManager.Client.Driver.Services
             ILogger<HeartbeatBackgroundService> logger)
         {
             _telemetryService = telemetryService;
+            _locationProvider = locationProvider;
             _hardwareStore = hardwareStore;
             _driverAccountStore = driverAccountStore;
             _sideBarStore = sideBarStore;
@@ -66,9 +62,6 @@ namespace PassengerManager.Client.Driver.Services
             LoadConfiguration();
         }
 
-        /// <summary>
-        /// Loads heartbeat configuration from appsettings.json
-        /// </summary>
         private void LoadConfiguration()
         {
             var terminalSettings = _configuration.GetSection("TerminalSettings");
@@ -86,10 +79,6 @@ namespace PassengerManager.Client.Driver.Services
                 _vehicleId);
         }
 
-        /// <summary>
-        /// Starts the background heartbeat service.
-        /// Must be called from UI thread (OnStartup).
-        /// </summary>
         public void Start()
         {
             if (_heartbeatTask != null)
@@ -105,10 +94,6 @@ namespace PassengerManager.Client.Driver.Services
             _logger.LogInformation("Heartbeat background service started");
         }
 
-        /// <summary>
-        /// Stops the background heartbeat service gracefully.
-        /// Must be called from UI thread (OnExit).
-        /// </summary>
         public async Task StopAsync()
         {
             if (_heartbeatTask == null)
@@ -140,27 +125,18 @@ namespace PassengerManager.Client.Driver.Services
             _heartbeatTask = null;
         }
 
-        /// <summary>
-        /// Main heartbeat loop that runs continuously.
-        /// Sends heartbeats whenever hardware is logged in (always-on telemetry).
-        /// Uses different intervals based on whether driver is also logged in.
-        /// </summary>
         private async Task HeartbeatLoop(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    // If we can execute the heartbeat collection path, the tracker should remain on.
                     TrackingAvailabilityChanged?.Invoke(true);
 
-                    // Always send heartbeat if hardware is logged in
                     if (_hardwareStore.IsLoggedIn)
                     {
-                        // Determine interval based on driver login status
                         bool isDriverLoggedIn = _driverAccountStore.IsLoggedIn;
                         bool isAppInForeground = IsApplicationInForeground();
-
                         int intervalSeconds;
 
                         if (_sideBarStore.IsEmergency)
@@ -170,15 +146,20 @@ namespace PassengerManager.Client.Driver.Services
                         else
                             intervalSeconds = _idleHeartbeatIntervalSeconds;
 
-                        // Send heartbeat
+                        // Fetch live or mocked coordinates from the provider
+                        var location = await _locationProvider.GetCurrentLocationAsync();
+
+                        // Map coordinates directly to the gRPC request
                         var request = new SendHeartbeatRequest
                         {
-                            Latitude = _latitude,
-                            Longitude = _longitude,
-                            Bearing = _bearing,
-                            Odometer = _odometer,
-                            Speed = _speed,
-                            IsAppInForeground = isAppInForeground
+                            Latitude = location.Latitude,
+                            Longitude = location.Longitude,
+                            Bearing = location.Bearing,
+                            Odometer = location.Odometer,
+                            Speed = location.Speed, // Already in km/h from the provider
+                            IsAppInForeground = isAppInForeground,
+                            RouteId = _driverAccountStore.IsLoggedIn ? _driverAccountStore.CurrentRouteId : null,
+                            TripId = _driverAccountStore.IsLoggedIn ? _driverAccountStore.CurrentTripId : null
                         };
 
                         var response = await _telemetryService.SendHeartbeatAsync(request);
@@ -186,24 +167,23 @@ namespace PassengerManager.Client.Driver.Services
                         if (response.Success)
                         {
                             _logger.LogDebug(
-                                "Heartbeat sent - Location: ({Latitude}, {Longitude}), Speed: {Speed}, Driver: {DriverLoggedIn}, Foreground: {IsForeground}",
-                                _latitude,
-                                _longitude,
-                                _speed,
-                                isDriverLoggedIn,
-                                isAppInForeground);
+                                "Heartbeat sent - Location: ({Latitude}, {Longitude}), Speed: {Speed} km/h, Trip: {RouteId} - {TripId}, Driver: {DriverLoggedIn}",
+                                location.Latitude,
+                                location.Longitude,
+                                location.Speed,
+                                request.RouteId,
+                                request.TripId,
+                                isDriverLoggedIn);
                         }
                         else
                         {
                             _logger.LogWarning("Heartbeat failed to send");
                         }
 
-                        // Wait for the next interval
                         await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), cancellationToken);
                     }
                     else
                     {
-                        // Hardware not logged in, wait longer before checking again
                         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                     }
                 }
@@ -216,40 +196,25 @@ namespace PassengerManager.Client.Driver.Services
                 {
                     _logger.LogError(ex, "Error in heartbeat loop");
                     TrackingAvailabilityChanged?.Invoke(false);
-                    // Continue on error, wait a bit before retrying
                     await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
                 }
             }
         }
 
-        /// <summary>
-        /// Checks if the application window is in the foreground.
-        /// </summary>
         private bool IsApplicationInForeground()
         {
             try
             {
-                return Application.Current?.MainWindow?.IsActive ?? false;
+                if (Application.Current == null) return false;
+
+                // Safely marshal the UI thread check
+                return Application.Current.Dispatcher.Invoke(() =>
+                    Application.Current.MainWindow?.IsActive ?? false);
             }
             catch
             {
                 return false;
             }
-        }
-
-        private void UpdateFallbackLocation()
-        {
-#if DEBUG
-            if (_lastLocationUpdateUtc > DateTime.UtcNow.AddSeconds(-30))
-                return;
-
-            double step = 0.00005;
-            _latitude += step;
-            _longitude += step;
-            _bearing = (_bearing + 5) % 360;
-            _speed = Math.Max(0, _speed);
-            _lastLocationUpdateUtc = DateTime.UtcNow;
-#endif
         }
 
         public void Dispose()

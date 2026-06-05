@@ -35,6 +35,8 @@ message SendHeartbeatRequest
 	double odometer = 4;
 	double speed = 5;	
 	bool is_app_in_foreground = 6;
+	optional string route_id = 7;
+	optional string trip_id = 8;
 }
 
 message SendHeartbeatResponse

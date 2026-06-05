@@ -1,9 +1,13 @@
-using PassengerManager.Client.Driver.Services;
-using PassengerManager.Client.Driver.Stores;
-using PassengerManager.Client.Core.Services.Interfaces;
-using PassengerManager.Client.Core.Stores;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using NUnit.Framework;
+using PassengerManager.Client.Core.DTOs;
+using PassengerManager.Client.Core.Services.Interfaces;
+using PassengerManager.Client.Core.Stores;
+using PassengerManager.Client.Driver.Services;
+using PassengerManager.Client.Driver.Stores;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace PassengerManager.Tests.Stress.Stress;
 
@@ -14,6 +18,7 @@ public class HeartbeatStressTests
     public async Task HeartbeatLoopHandlesRapidTicks()
     {
         TestTelemetryService telemetryService = new();
+        TestLocationProvider locationProvider = new();
         HardwareAccountStore hardwareStore = new();
         DriverAccountStore driverStore = new();
         SideBarStore sideBarStore = new();
@@ -27,6 +32,7 @@ public class HeartbeatStressTests
 
         HeartbeatBackgroundService service = new(
             telemetryService,
+            locationProvider,
             hardwareStore,
             driverStore,
             sideBarStore,
@@ -40,6 +46,16 @@ public class HeartbeatStressTests
         await service.StopAsync();
 
         Assert.That(telemetryService.HeartbeatCount, Is.GreaterThanOrEqualTo(1));
+    }
+
+    // Mock Location Provider for the test
+    private sealed class TestLocationProvider : ILocationProvider
+    {
+        public Task<GeoLocation> GetCurrentLocationAsync()
+        {
+            // Returns a static dummy location instantly to prevent I/O blocking during the stress test
+            return Task.FromResult(new GeoLocation(50.4501, 30.5234, 40.0, 0.0, 15000.0));
+        }
     }
 
     private sealed class TestTelemetryService : ITelemetryService

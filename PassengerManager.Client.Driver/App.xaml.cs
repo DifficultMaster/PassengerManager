@@ -15,6 +15,7 @@ using PassengerManager.Client.Core.Services.Interfaces;
 using PassengerManager.Client.Core.Services.Translators;
 using PassengerManager.Client.Driver.Services;
 using System.Globalization;
+using PassengerManager.Client.Driver.Services.Location;
 using PassengerManager.Client.Driver.ViewModels.Overlay;
 
 namespace PassengerManager.Client.Driver
@@ -76,6 +77,11 @@ namespace PassengerManager.Client.Driver
                     services.AddSingleton<IAuthErrorTranslator, AuthErrorTranslator>();
                     services.AddSingleton<ICommunicationService, GrpcCommunicationService>();
                     services.AddSingleton<ITelemetryService, GrpcTelemetryService>();
+                    #if DEBUG
+                    services.AddSingleton<ILocationProvider, SmartDebugLocationProvider>();
+                    #else
+                    services.AddSingleton<ILocationProvider, NativeLocationProvider>();
+                    #endif
 
                     services.AddSingleton<INavigationService, AppNavigationService>();
                     services.AddSingleton<NavigationStore>();
@@ -100,13 +106,16 @@ namespace PassengerManager.Client.Driver
         }
 
         protected override async void OnStartup(StartupEventArgs e)
-        {          
+        {
+            this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
             await _host.StartAsync();
 
             // Perform hardware login first to get the device token for telemetry
             await PerformHardwareLoginAsync();
 
             MainWindow mainWindow = _host.Services.GetRequiredService<MainWindow>();
+            this.MainWindow = mainWindow;
             mainWindow.DataContext = _host.Services.GetRequiredService<MainViewModel>();
 
             INavigationService navigationService = _host.Services.GetRequiredService<INavigationService>();
@@ -137,6 +146,8 @@ namespace PassengerManager.Client.Driver
 
             ApplyDebugWindowSettings(mainWindow);
             mainWindow.Show();
+
+            this.ShutdownMode = ShutdownMode.OnMainWindowClose;
             base.OnStartup(e);
         }
 

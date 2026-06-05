@@ -16,6 +16,7 @@ using System.Text;
 using PassengerManager.Server.Models;
 using System.Runtime.CompilerServices;
 using Microsoft.IdentityModel.Tokens;
+using PassengerManager.Server.Services.Consumers;
 using StackExchange.Redis;
 using PassengerManager.Shared.DTOs;
 
@@ -47,8 +48,8 @@ namespace PassengerManager.Server
                     {
                         Shared.Models.Vehicle vehicle = new Vehicle
                         {
-                            VehicleId = "1099",
-                            HardwareHash = "DEFAULT_HARDWARE_HASH"
+                            VehicleId = "TEST_VEHICLE_REMOVE_AFTER_SYSTEM_SETUP",
+                            HardwareHash = PasswordHandler.GetHashedPassword("DEFAULT_HARDWARE_HASH")
                         };
 
                         context.Vehicles.Add(vehicle);
@@ -154,6 +155,8 @@ namespace PassengerManager.Server
             builder.Services.AddMassTransit(x =>
             {
                 x.SetKebabCaseEndpointNameFormatter();
+
+                x.AddConsumers(typeof(Program).Assembly);
                 
                 x.UsingRabbitMq((context, cfg) =>
                 {

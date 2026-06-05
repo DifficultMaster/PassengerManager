@@ -16,6 +16,7 @@ using PassengerManager.Client.Core.Services.Translators;
 using PassengerManager.Client.Driver.Services;
 using System.Globalization;
 using PassengerManager.Client.Driver.Services.Location;
+using PassengerManager.Client.Driver.ViewModels.Dashboard;
 using PassengerManager.Client.Driver.ViewModels.Overlay;
 
 namespace PassengerManager.Client.Driver
@@ -73,6 +74,22 @@ namespace PassengerManager.Client.Driver
                         options.Address = new Uri(baseUrl);
                     });
 
+                    services.AddGrpcClient<DriverOpsService.DriverOpsServiceClient>(options =>
+                        {
+                            options.Address = new Uri(baseUrl);
+                        })
+                        .AddCallCredentials((context, metadata, serviceProvider) =>
+                        {
+                            DriverAccountStore driverAccountStore = serviceProvider.GetRequiredService<DriverAccountStore>();
+
+                            if (!string.IsNullOrEmpty(driverAccountStore.Token))
+                            {
+                                metadata.Add("Authorization", $"Bearer {driverAccountStore.Token}");
+                            }
+
+                            return Task.CompletedTask;
+                        });
+
                     services.AddSingleton<IAuthService, GrpcAuthService>();
                     services.AddSingleton<IAuthErrorTranslator, AuthErrorTranslator>();
                     services.AddSingleton<ICommunicationService, GrpcCommunicationService>();
@@ -89,6 +106,7 @@ namespace PassengerManager.Client.Driver
                     services.AddSingleton<DriverAccountStore>();
                     services.AddSingleton<AccountStore>(provider => provider.GetRequiredService<DriverAccountStore>());
                     services.AddSingleton<HardwareAccountStore>();
+                    services.AddSingleton<ManifestStore>();
                     services.AddSingleton<SideBarStore>();
                     services.AddSingleton<StatusBarStore>();
 
@@ -97,6 +115,13 @@ namespace PassengerManager.Client.Driver
                     services.AddSingleton<MainViewModel>();
                     services.AddSingleton<DriverLoginViewModel>();
                     //services.AddSingleton<DriverDashboardViewModel>();
+
+                    services.AddSingleton<NavigationMapViewModel>();
+                    services.AddSingleton<ReportIncidentViewModel>();
+                    services.AddSingleton<RouteSelectionViewModel>();
+                    services.AddSingleton<TripSelectionViewModel>();
+                    services.AddSingleton<SettingsViewModel>();
+
                     services.AddSingleton<SideBarViewModel>();
                     services.AddSingleton<StatusBarViewModel>();
 

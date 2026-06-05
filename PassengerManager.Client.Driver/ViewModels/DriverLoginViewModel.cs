@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using PassengerManager.Client.Driver.Resources;
 using PassengerManager.Client.Core.Resources;
+using PassengerManager.Client.Driver.ViewModels.Dashboard;
 
 namespace PassengerManager.Client.Driver.ViewModels
 {
@@ -361,7 +362,7 @@ namespace PassengerManager.Client.Driver.ViewModels
                     DriverAccountStore driverStore = (DriverAccountStore)AccountStore;
                     driverStore.Login(response);
 
-                    //NavigationService.NavigateTo<DriverDashboardViewModel>();
+                    NavigationService.NavigateTo<RouteSelectionViewModel>();
                 }
                 else if (response.Code == AuthResultCode.CredentialOverdue)
                 {

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using PassengerManager.Client.Driver.Resources;
 using PassengerManager.Client.Core.Resources;
 using PassengerManager.Client.Driver.ViewModels.Dashboard;
+using PassengerManager.Client.Driver.Views.Dashboard;
 
 namespace PassengerManager.Client.Driver.ViewModels
 {
@@ -385,9 +386,9 @@ namespace PassengerManager.Client.Driver.ViewModels
                     Pin = string.Empty;
                 }
             }
-            catch
+            catch (Exception e)
             {
-                ErrorMessage = "Network error. Cannot reach the server.";
+                ErrorMessage = $"Network error. Cannot reach the server. Error: {e.Message}";
                 CurrentState = DriverLoginState.EnteringId;
 
                 DriverId = string.Empty;

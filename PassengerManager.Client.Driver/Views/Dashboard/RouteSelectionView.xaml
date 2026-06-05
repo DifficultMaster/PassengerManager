@@ -1,0 +1,32 @@
+﻿<UserControl x:Class="PassengerManager.Client.Driver.Views.Dashboard.RouteSelectionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:PassengerManager.Client.Driver.Views.Dashboard"
+             xmlns:vm="clr-namespace:PassengerManager.Client.Driver.ViewModels.Dashboard"
+             mc:Ignorable="d" Background="{x:Null}"
+             d:DesignHeight="900" d:DesignWidth="1556" 
+             d:DataContext="{d:DesignInstance Type=vm:RouteSelectionViewModel, IsDesignTimeCreatable=False}">
+
+    <Border Margin="76,90,80,90" Background="{StaticResource BrushBlue}" CornerRadius="30">
+        <ScrollViewer VerticalScrollBarVisibility="Hidden" PanningMode="VerticalOnly">
+            <ItemsControl ItemsSource="{Binding Routes}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="4" IsItemsHost="True"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Content="{Binding ShortName}" 
+                                Command="{Binding DataContext.SelectRouteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                CommandParameter="{Binding}"
+                                Style="{StaticResource TileButtonStyle}"
+                                Margin="45,15"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Border>
+</UserControl>

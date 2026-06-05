@@ -4,15 +4,17 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:PassengerManager.Client.Driver.ViewModels"
+        xmlns:vmdashboard ="clr-namespace:PassengerManager.Client.Driver.ViewModels.Dashboard"
         xmlns:vmoverlay="clr-namespace:PassengerManager.Client.Driver.ViewModels.Overlay"
         xmlns:views="clr-namespace:PassengerManager.Client.Driver.Views"
+        xmlns:viewsdashboard="clr-namespace:PassengerManager.Client.Driver.Views.Dashboard"
         xmlns:viewsoverlay="clr-namespace:PassengerManager.Client.Driver.Views.Overlay"
         xmlns:controls="clr-namespace:PassengerManager.Client.Driver.Controls"
         xmlns:stores="clr-namespace:PassengerManager.Client.Driver.Stores"
         Title="Terminal"
         WindowState="Maximized"
         WindowStyle="None"
-        Background="#121212"
+        Background="{StaticResource BrushBase}"
         mc:Ignorable="d" d:DesignHeight="1080" d:DesignWidth="1920"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel, IsDesignTimeCreatable=False}">
 
@@ -29,6 +31,12 @@
             </DataTemplate>
             <DataTemplate DataType="{x:Type vmoverlay:StatusBarViewModel}">
                 <viewsoverlay:StatusBarView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vmdashboard:RouteSelectionViewModel}">
+                <viewsdashboard:RouteSelectionView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vmdashboard:TripSelectionViewModel}">
+                <viewsdashboard:TripSelectionView />
             </DataTemplate>
         </ResourceDictionary>
     </Window.Resources>
@@ -105,14 +113,15 @@
                                                    Width="128" Height="128" FontSize="56"
                                                    Content="SOS"
                                                    HoldDuration="0:0:3"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="40,0,0,40"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Bottom"
                                                    Command="{Binding DataContext.SideBarViewModel.InitiateEmergencyCommand, RelativeSource={RelativeSource AncestorType=Window}}">
                         <controls:HoldToActivateButton.Style>
                             <Style TargetType="controls:HoldToActivateButton" BasedOn="{StaticResource SosCircularStyle}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Setter Property="Margin" Value="0,0,0,40"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding DataContext.SideBarStore.IsOverlay, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
+                                    <DataTrigger Binding="{Binding DataContext.SideBarStore.IsOverlay, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                                 Value="True">
+                                        <Setter Property="Margin" Value="40,0,0,40"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -120,7 +129,19 @@
                     </controls:HoldToActivateButton>
                 </Grid>
                 <viewsoverlay:StatusBarView VerticalAlignment="Top" Panel.ZIndex="20"
-                                            DataContext="{Binding DataContext.StatusBarViewModel, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                            DataContext="{Binding DataContext.StatusBarViewModel, RelativeSource={RelativeSource AncestorType=Window}}">
+                    <viewsoverlay:StatusBarView.Style>
+                        <Style TargetType="viewsoverlay:StatusBarView">
+                            <Setter Property="Margin" Value="80,16,80,0"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DataContext.SideBarStore.IsOverlay, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                             Value="False">
+                                    <Setter Property="Margin" Value="288,16,80,0"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </viewsoverlay:StatusBarView.Style>
+                </viewsoverlay:StatusBarView>
             </Grid>
         </Viewbox>
     </Grid>

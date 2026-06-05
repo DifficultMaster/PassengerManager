@@ -41,7 +41,7 @@ namespace PassengerManager.Client.Driver.ViewModels.Dashboard
             if (_manifestStore.SelectedRoute != null)
             {
                 RouteTitle = _manifestStore.SelectedRoute.ShortName;
-                Trips = new ObservableCollection<TripOption>(_manifestStore.SelectedRoute.Trips);
+                Trips = new ObservableCollection<TripOption>(_manifestStore.SelectedRoute.Trips.OrderBy(t => t.Headsign));
             }          
         }
 

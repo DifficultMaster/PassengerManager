@@ -7,6 +7,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/PassengerManager.Client.Core;component/Styles/Colors.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/PassengerManager.Client.Driver;component/Styles/DriverLoginStyles.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/PassengerManager.Client.Driver;component/Styles/DriverDashboardStyles.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/PassengerManager.Client.Driver;component/Styles/OverlayStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>

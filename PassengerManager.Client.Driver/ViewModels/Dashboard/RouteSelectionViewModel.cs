@@ -44,7 +44,7 @@ namespace PassengerManager.Client.Driver.ViewModels.Dashboard
                 var response = await _driverOpsClient.GetManifestAsync(new GetManifestRequest());
                 if (response.Success)
                 {
-                    _manifestStore.AvailableRoutes = new List<RouteOption>(response.Routes);
+                    _manifestStore.AvailableRoutes = new List<RouteOption>(response.Routes.OrderBy(r => r.ShortName));
                     Routes = new ObservableCollection<RouteOption>(_manifestStore.AvailableRoutes);
                 }
                 else throw new AccessViolationException("Failed to retrieve manifest.");

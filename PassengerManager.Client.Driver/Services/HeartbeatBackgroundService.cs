@@ -156,12 +156,19 @@ namespace PassengerManager.Client.Driver.Services
                             Longitude = location.Longitude,
                             Bearing = location.Bearing,
                             Odometer = location.Odometer,
-                            Speed = location.Speed, // Already in km/h from the provider
-                            IsAppInForeground = isAppInForeground,
-                            RouteId = _driverAccountStore.IsLoggedIn ? _driverAccountStore.CurrentRouteId : null,
-                            TripId = _driverAccountStore.IsLoggedIn ? _driverAccountStore.CurrentTripId : null
+                            Speed = location.Speed, // already in km/h
+                            IsAppInForeground = isAppInForeground
                         };
 
+                        // Safely attach optional Protobuf strings ONLY if they exist
+                        if (_driverAccountStore.IsLoggedIn)
+                        {
+                            if (!string.IsNullOrEmpty(_driverAccountStore.CurrentRouteId))
+                                request.RouteId = _driverAccountStore.CurrentRouteId;
+
+                            if (!string.IsNullOrEmpty(_driverAccountStore.CurrentTripId))
+                                request.TripId = _driverAccountStore.CurrentTripId;
+                        }
                         var response = await _telemetryService.SendHeartbeatAsync(request);
 
                         if (response.Success)

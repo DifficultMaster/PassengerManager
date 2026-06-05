@@ -23,8 +23,8 @@ namespace PassengerManager.Client.Driver.ViewModels.Overlay
         [ObservableProperty]
         private string _currentDelay = string.Empty; // proper support to be added when fixed scheduling is a supported feature
 
-        [ObservableProperty]
-        private bool _isLoggedIn;
+        [ObservableProperty] 
+        private bool _isOnActiveTrip;
 
         public StatusBarStore Store
         {
@@ -35,12 +35,10 @@ namespace PassengerManager.Client.Driver.ViewModels.Overlay
         {
             _store = store;
             _driverAccountStore = driverAccountStore;
-
-            IsLoggedIn = _driverAccountStore.IsLoggedIn;
-
+         
             _driverAccountStore.StateChanged += OnDriverStateChanged;
 
-            _timer = new DispatcherTimer
+            _timer = new DispatcherTimer(DispatcherPriority.Render, Dispatcher.CurrentDispatcher)
             {
                 Interval = TimeSpan.FromSeconds(1)
             };
@@ -52,7 +50,7 @@ namespace PassengerManager.Client.Driver.ViewModels.Overlay
 
         private void OnDriverStateChanged()
         {
-            IsLoggedIn = _driverAccountStore.IsLoggedIn;
+            IsOnActiveTrip = !string.IsNullOrEmpty(_driverAccountStore.CurrentTripId);
         }
 
         private void TimerTick(object? sender, EventArgs e)

@@ -70,12 +70,12 @@
                 <Button Style="{StaticResource NavButtonStyle}" 
                         Command="{Binding NavigateToMapCommand}" 
                         Tag="{Binding Store.NavigationButtonState}">
-                    <svgs:SvgViewbox Source="/Resources/Icons/navigation-2 (1).svg" Width="128" Height="128"/>
+                    <svgs:SvgViewbox Source="/Resources/Icons/navigation-2.svg" Width="128" Height="128"/>
                 </Button>
                 <Button Style="{StaticResource NavButtonStyle}" 
                         Command="{Binding NavigateToReportCommand}" 
                         Tag="{Binding Store.ReportButtonState}">
-                    <svgs:SvgViewbox Source="/Resources/Icons/flag (1).svg" Width="128" Height="128"/>
+                    <svgs:SvgViewbox Source="/Resources/Icons/flag.svg" Width="128" Height="128"/>
                 </Button>
                 <Button Command="{Binding CallDispatchCommand}" 
                         Tag="{Binding Store.PhoneButtonState}">
@@ -110,7 +110,7 @@
                 <Button Style="{StaticResource NavButtonStyle}" 
                         Command="{Binding NavigateToSettingsCommand}" 
                         Tag="{Binding Store.SettingsButtonState}">
-                    <svgs:SvgViewbox Source="/Resources/Icons/settings (1).svg" Width="128" Height="128"/>
+                    <svgs:SvgViewbox Source="/Resources/Icons/settings.svg" Width="128" Height="128"/>
                 </Button>
             </StackPanel>
         </Grid>

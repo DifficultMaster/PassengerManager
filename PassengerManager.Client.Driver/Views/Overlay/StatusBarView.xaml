@@ -10,7 +10,29 @@
              xmlns:svgs="http://sharpvectors.codeplex.com/svgc/"
              mc:Ignorable="d" Width="1760" Height="96" Background="Transparent" 
              d:DesignHeight="96" d:DesignWidth="1760" d:DataContext="{d:DesignInstance Type=vm:StatusBarViewModel, IsDesignTimeCreatable=False}">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+
     <Grid Background="Transparent">
+
+        <Grid Visibility="{Binding IsLoggedIn, Converter={StaticResource BoolToVis}}">
+
+            <TextBlock Text="{Binding CurrentTime}" 
+                       Foreground="White" FontSize="36" FontWeight="Bold" 
+                       HorizontalAlignment="Left" VerticalAlignment="Center" Margin="100,0,0,0"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,5">
+                <TextBlock Text="▲" Foreground="#E74C3C" FontSize="28" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <TextBlock Text="{Binding CurrentDelay}" Foreground="#E74C3C" FontSize="36" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <TextBlock Text="{Binding CurrentDate}" 
+                       Foreground="White" FontSize="36" FontWeight="Bold" 
+                       HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,160,0"/>
+        </Grid>
+
         <Grid HorizontalAlignment="Left" Width="64" Height="64">
             <Ellipse>
                 <Ellipse.Style>
@@ -49,6 +71,7 @@
                 </svgs:SvgViewbox.Style>
             </svgs:SvgViewbox>
         </Grid>
+
         <Grid HorizontalAlignment="Center" Width="128" Height="64">
             <Grid.Style>
                 <Style TargetType="Grid">

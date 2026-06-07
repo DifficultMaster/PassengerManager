@@ -105,6 +105,24 @@ namespace PassengerManager.Server.Services
                 }
                 else
                 {
+                    // This piece of logic is for returning trips on a fixed schedule based system. It requires utilizing stop_times.txt and is currently unsupported
+                    //
+                    //routesToProcess = await _context.Routes
+                    //    .AsNoTracking()
+                    //    .Where(r => r.AgencyId == agencyId)
+                    //    .Select(r => new RouteOptionDto(
+                    //        r.RouteId,
+                    //        r.ShortName,
+                    //        r.LongName ?? r.ShortName,
+                    //        r.Trips.Select(t => new TripOptionDto(
+                    //            t.TripId,
+                    //            t.Headsign ?? "Unknown",
+                    //            t.DirectionId ?? 0
+                    //            )).Distinct().ToList()
+                    //        ))
+                    //    .ToListAsync();
+
+                    // This logic is for interval-based systems only. In the future, a clear distinction via appsettings.json must be made
                     routesToProcess = await _context.Routes
                         .AsNoTracking()
                         .Where(r => r.AgencyId == agencyId)
@@ -112,12 +130,14 @@ namespace PassengerManager.Server.Services
                             r.RouteId,
                             r.ShortName,
                             r.LongName ?? r.ShortName,
-                            r.Trips.Select(t => new TripOptionDto(
-                                t.TripId,
-                                t.Headsign ?? "Unknown",
-                                t.DirectionId ?? 0
-                                )).Distinct().ToList()
-                            ))
+                            r.Trips
+                                .GroupBy(t => new { t.Headsign, t.DirectionId})
+                                .Select(g => new TripOptionDto(
+                                    g.First().TripId,
+                                    g.First().Headsign ?? "Unknown",
+                                    g.First().DirectionId ?? 0
+                                )).ToList()
+                        ))
                         .ToListAsync();
 
                     try

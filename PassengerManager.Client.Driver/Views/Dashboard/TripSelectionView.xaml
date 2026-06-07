@@ -4,9 +4,65 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:PassengerManager.Client.Driver.Views.Dashboard"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-            
-    </Grid>
+             xmlns:vm="clr-namespace:PassengerManager.Client.Driver.ViewModels.Dashboard"
+             mc:Ignorable="d" Background="{x:Null}"
+             d:DesignHeight="1080" d:DesignWidth="1712" 
+             d:DataContext="{d:DesignInstance Type=vm:TripSelectionViewModel, IsDesignTimeCreatable=False}">
+
+    <!-- Top Margin is 130 to ensure it clears the Status Bar without overlapping -->
+    <Border Margin="76,130,80,90" Background="{StaticResource BrushBlue}" CornerRadius="30">
+
+        <ScrollViewer VerticalScrollBarVisibility="Hidden" PanningMode="VerticalOnly">
+
+            <!-- StackPanel creates the vertical list layout -->
+            <StackPanel Margin="60,30,60,30">
+
+                <!-- 1. RETURN BUTTON (Always First) -->
+                <Button Command="{Binding GoBackCommand}"
+                        Style="{StaticResource BackButtonStyle}"
+                        Width="NaN" Height="Auto" MinHeight="140"
+                        HorizontalAlignment="Stretch"
+                        Margin="0,0,0,30">
+
+                    <!-- Swap "↩ Return" with your translation file binding -->
+                    <TextBlock Text="↩ Return" 
+                               TextWrapping="Wrap" 
+                               TextAlignment="Center" 
+                               FontSize="56"
+                               Margin="30"/>
+                </Button>
+
+                <!-- 2. TRIP LIST -->
+                <ItemsControl ItemsSource="{Binding Trips}" HorizontalAlignment="Stretch">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Vertical"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+
+                            <!-- Width="NaN" overwrites the 270px default so it stretches horizontally -->
+                            <Button Command="{Binding DataContext.SelectTripCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    CommandParameter="{Binding}"
+                                    Style="{StaticResource TileButtonStyle}"
+                                    Width="NaN" Height="Auto" MinHeight="140"
+                                    HorizontalAlignment="Stretch"
+                                    Margin="0,15">
+
+                                <!-- Wrapped in a TextBlock to allow long destination strings to drop to a second line -->
+                                <TextBlock Text="{Binding Headsign}" 
+                                           TextWrapping="Wrap" 
+                                           TextAlignment="Center" 
+                                           FontSize="56"
+                                           Margin="30"/>
+                            </Button>
+
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
 </UserControl>

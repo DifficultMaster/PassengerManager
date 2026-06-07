@@ -61,6 +61,15 @@ namespace PassengerManager.Client.Driver.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Go back to route selection.
+        /// </summary>
+        public static string ButtonGoBackToRouteSelection {
+            get {
+                return ResourceManager.GetString("ButtonGoBackToRouteSelection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Repeat new PIN.
         /// </summary>
         public static string PromptConfirmNewPin {

@@ -42,7 +42,7 @@
     </Window.Resources>
 
     <Grid>
-        <Border BorderThickness="8">
+        <Border BorderThickness="8" Panel.ZIndex="101">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="BorderBrush" Value="Transparent"/>

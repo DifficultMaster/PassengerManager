@@ -11,10 +11,11 @@ using System.Text;
 using System.Windows;
 using System.Windows.Navigation;
 using PassengerManager.Client.Core.ViewModels;
+using PassengerManager.Client.Driver.Resources;
 
 namespace PassengerManager.Client.Driver.ViewModels.Dashboard
 {
-    public partial class TripSelectionViewModel : BaseViewModel
+    public partial class TripSelectionViewModel : BaseViewModel, IDisposable
     {
         private readonly DriverAccountStore _driverAccountStore;
         private readonly ManifestStore _manifestStore;
@@ -25,6 +26,11 @@ namespace PassengerManager.Client.Driver.ViewModels.Dashboard
         [ObservableProperty]
         private string _routeTitle = string.Empty;
 
+        public string GoBackButtonText
+        {
+            get => UIStrings.ButtonGoBackToRouteSelection;
+        }
+
         public TripSelectionViewModel(           
             INavigationService navigationService,
             DriverAccountStore driverAccountStore,
@@ -34,6 +40,13 @@ namespace PassengerManager.Client.Driver.ViewModels.Dashboard
             _manifestStore = manifestStore;
 
             LoadTrips();
+
+            _manifestStore.OnSelectedRouteChanged += LoadTrips;
+        }
+
+        public void Dispose()
+        {
+            _manifestStore.OnSelectedRouteChanged -= LoadTrips;
         }
 
         private void LoadTrips()
@@ -56,6 +69,12 @@ namespace PassengerManager.Client.Driver.ViewModels.Dashboard
                 selectedTrip.TripId);
 
             NavigationService.NavigateTo<NavigationMapViewModel>();
+        }
+
+        [RelayCommand]
+        private void GoBack()
+        {
+            NavigationService.NavigateTo<RouteSelectionViewModel>();
         }
     }
 }

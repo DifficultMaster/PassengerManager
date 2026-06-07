@@ -8,8 +8,20 @@ namespace PassengerManager.Client.Driver.Stores
     public class ManifestStore
     {
         public List<RouteOption> AvailableRoutes { get; set; } = new();
-        
-        public RouteOption? SelectedRoute { get; set; }
+
+        private RouteOption? _selectedRoute;
+
+        public RouteOption? SelectedRoute
+        {
+            get => _selectedRoute;
+            set
+            {
+                _selectedRoute = value;
+                OnSelectedRouteChanged?.Invoke();
+            }
+        }
+
+        public event Action? OnSelectedRouteChanged;
 
         public void Clear()
         {

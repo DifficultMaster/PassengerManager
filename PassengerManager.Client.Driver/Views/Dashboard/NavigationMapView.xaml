@@ -1,0 +1,15 @@
+﻿<UserControl x:Class="PassengerManager.Client.Driver.Views.Dashboard.NavigationMapView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:PassengerManager.Client.Driver.Views.Dashboard"
+             xmlns:mapsui="clr-namespace:Mapsui.UI.Wpf;assembly=Mapsui.UI.Wpf"
+             xmlns:vm="clr-namespace:PassengerManager.Client.Driver.ViewModels.Dashboard"
+             mc:Ignorable="d" Background="{x:Null}"
+             d:DesignHeight="900" d:DesignWidth="1556" 
+             d:DataContext="{d:DesignInstance Type=vm:NavigationMapViewModel, IsDesignTimeCreatable=False}">
+    <Border Margin="76,174,80,90" CornerRadius="30">
+        <mapsui:MapControl Map="{Binding MapData}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
+    </Border>
+</UserControl>

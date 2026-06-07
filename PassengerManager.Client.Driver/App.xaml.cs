@@ -114,7 +114,6 @@ namespace PassengerManager.Client.Driver
 
                     services.AddSingleton<MainViewModel>();
                     services.AddSingleton<DriverLoginViewModel>();
-                    //services.AddSingleton<DriverDashboardViewModel>();
 
                     services.AddSingleton<NavigationMapViewModel>();
                     services.AddSingleton<ReportIncidentViewModel>();
